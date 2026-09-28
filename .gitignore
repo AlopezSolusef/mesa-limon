@@ -1,0 +1,9 @@
+# Llaves: NUNCA se suben (en GitHub van como Secrets)
+.env
+
+# Generados localmente
+dashboard.html
+sitio/
+usda_*_raw.json
+__pycache__/
+.claude/
