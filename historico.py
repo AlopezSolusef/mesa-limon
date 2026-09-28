@@ -8,7 +8,7 @@ Uso:
 Abre dashboard.html en el navegador. Vuelve a correr el script para actualizarlo.
 """
 import json, os, sys
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
 import truststore
@@ -27,6 +27,7 @@ COMTRADE_KEY = os.getenv("COMTRADE_KEY", "").strip()
 CENSUS_KEY = os.getenv("CENSUS_KEY", "").strip()  # opcional: https://api.census.gov/data/key_signup.html
 
 INICIO = 2010
+HORA_CDMX = timezone(timedelta(hours=-6))  # México ya no cambia de horario; GitHub corre en UTC
 ANIOS_COMPARACION = 10  # la estacionalidad compara contra los últimos 10 años (precios nominales)
 KG_POR_CAJA_40LB = 40 * 0.45359237  # 18.144 kg
 CALIBRES = ["110s", "150s", "175s", "200s", "230s", "250s"]
@@ -394,7 +395,7 @@ def construir(usda, fx, ct, espejo, census=None, terminales=None):
         "tabla": {"cols": list(tabla.columns), "filas": [[i] + [None if pd.isna(v) else round(v, 2) for v in r]
                                                           for i, r in zip(tabla.index, tabla.values)],
                   "fx": fx_hoy, "kg": KG_POR_CAJA_40LB},
-        "generado": datetime.now().strftime("%d/%m/%Y %H:%M"),
+        "generado": datetime.now(HORA_CDMX).strftime("%d/%m/%Y %H:%M") + " (hora CDMX)",
     }
     html = (AQUI / "plantilla_dashboard.html").read_text(encoding="utf-8")
     html = html.replace("/*__DATOS__*/null", json.dumps(limpiar(datos), ensure_ascii=False, allow_nan=False, default=str))
