@@ -7,3 +7,6 @@ sitio/
 usda_*_raw.json
 __pycache__/
 .claude/
+pulso.json
+correo_vista.html
+*.pdf

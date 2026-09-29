@@ -5,7 +5,15 @@ on:
     # Lunes a viernes, 17:00 y 20:00 hora de CDMX (UTC-6): después de que USDA y Banxico publican
     - cron: "0 23 * * 1-5"
     - cron: "0 2 * * 2-6"
+    # Lunes a viernes, 9:00 CDMX: actualiza y envía el correo del Pulso McAllen
+    - cron: "0 15 * * 1-5"
   workflow_dispatch:  # botón "Run workflow" para actualizar a mano
+    inputs:
+      correo:
+        description: "Correo del Pulso"
+        type: choice
+        options: ["no", "prueba", "enviar"]
+        default: "no"
 
 permissions:
   contents: write
@@ -54,3 +62,16 @@ jobs:
 
       - id: deploy
         uses: actions/deploy-pages@v4
+
+      - name: Enviar correo del Pulso
+        # a las 9:00, o a mano eligiendo "prueba" (solo al remitente) o "enviar"
+        if: github.event.schedule == '0 15 * * 1-5' || (github.event_name == 'workflow_dispatch' && inputs.correo != 'no')
+        env:
+          SMTP_USUARIO: ${{ secrets.SMTP_USUARIO }}
+          SMTP_CLAVE: ${{ secrets.SMTP_CLAVE }}
+          CORREO_PARA: ${{ secrets.CORREO_PARA }}
+          CORREO_CC: ${{ secrets.CORREO_CC }}
+          MODO: ${{ inputs.correo == 'prueba' && '--prueba' || '' }}
+        run: |
+          if [ -z "$SMTP_USUARIO" ]; then echo "Correo no configurado todavía; no se envía."; exit 0; fi
+          python enviar_correo.py $MODO

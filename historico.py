@@ -458,12 +458,56 @@ def construir(usda, fx, ct, espejo, census=None, terminales=None, sniim=None):
                   "fx": fx_hoy, "kg": KG_POR_CAJA_40LB},
         "generado": datetime.now(HORA_CDMX).strftime("%d/%m/%Y %H:%M") + " (hora CDMX)",
     }
+    # Pulso con costos base: lo usa el correo diario (enviar_correo.py)
+    datos["pulso"] = calcular_pulso(cadena, datos["origen"], datos["costos"], fx_hoy)
+    (AQUI / "pulso.json").write_text(json.dumps(limpiar({
+        "pulso": datos["pulso"], "insights": datos["insights"], "costos": datos["costos"],
+        "fx_fecha": datos["kpi"]["fx_fecha"], "generado": datos["generado"]}), ensure_ascii=False, indent=1,
+        default=str), encoding="utf-8")
     html = (AQUI / "plantilla_dashboard.html").read_text(encoding="utf-8")
     html = html.replace("/*__DATOS__*/null", json.dumps(limpiar(datos), ensure_ascii=False, allow_nan=False, default=str))
     (AQUI / "dashboard.html").write_text(html, encoding="utf-8")
     (AQUI / "sitio").mkdir(exist_ok=True)
     (AQUI / "sitio" / "index.html").write_text(html, encoding="utf-8")  # lo que publica GitHub Pages
     print(f"  Dashboard: {AQUI / 'dashboard.html'}")
+
+
+def calcular_pulso(cadena, origen, costos, fx, tier="Estándar"):
+    """Pulso McAllen en MXN por caja con los costos base de costos.json.
+    Es el mismo cálculo que hace la pestaña "Pulso McAllen" de la página (función resultados())."""
+    m = cadena["ultimo"].get("McAllen (FOB)", {})
+    p = m.get(tier) or m.get("Estándar")
+    if not p:
+        return None
+    venta = p["usd"] * fx
+    pf = costos["precio_fruta"]
+    r = (origen or {}).get(pf["fuente"])
+    if pf["fuente"] == "manual" or not r:
+        precio_kg, fuente_fruta = costos["precio_fruta_oscar"], "precio capturado a mano"
+    else:
+        precio_kg = r["frec"] + pf["ajuste"]
+        fuente_fruta = f"SNIIM {r['nombre'].replace('Central de Abasto ', '')} del {r['fecha']}" + (
+            f" {'+' if pf['ajuste'] > 0 else '−'} ajuste {abs(pf['ajuste']):.2f}" if pf["ajuste"] else "")
+    cajas = costos["cajas_por_camion"]
+    empaque = sum(n * pu for _, n, pu in costos["empaque"])
+    aduanas = sum(v for _, v in costos["aduanas"])
+    conceptos = [("Fruta", costos["kg_fruta_por_camion"] * precio_kg / cajas),
+                 ("Empaque", empaque / cajas),
+                 ("Transporte a McAllen", costos["transporte"] / cajas),
+                 ("Aduanas", aduanas / cajas)]
+    costo = sum(v for _, v in conceptos)
+    neta = venta * (1 - costos["comision_pct"] / 100)
+    margen = neta - costo
+    semanal = cajas * costos["camiones_por_semana"]
+    return {
+        "fecha_usda": p["fecha"], "usd_caja": p["usd"], "fx": fx, "tier": tier if m.get(tier) else "Estándar",
+        "precio_fruta_kg": precio_kg, "fuente_fruta": fuente_fruta,
+        "venta": venta, "costo": costo, "margen": margen, "pct": margen / venta if venta else 0,
+        "utilidad_camion": margen * cajas, "cajas": cajas, "camiones": costos["camiones_por_semana"],
+        "semana_cajas": semanal, "semana_ventas": neta * semanal, "semana_utilidad": margen * semanal,
+        "conceptos": conceptos,
+        "precio_max_fruta": (neta - costo + conceptos[0][1]) * cajas / costos["kg_fruta_por_camion"],
+    }
 
 
 MESES = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"]
