@@ -24,7 +24,7 @@ from dotenv import load_dotenv
 
 AQUI = Path(__file__).parent
 load_dotenv(AQUI / ".env")
-URL_DASHBOARD = "https://alopezsolusef.github.io/mesa-limon/#costos"
+URL_DASHBOARD = "https://alopezsolusef.github.io/mesa-limon/"
 HOY = datetime.now(timezone(timedelta(hours=-6)))  # hora CDMX
 
 TINTA, SEC, MUTED, BORDE, FONDO, VERDE, ROJO, AZUL = (

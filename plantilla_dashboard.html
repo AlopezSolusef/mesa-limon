@@ -108,6 +108,15 @@ tr.total td { font-weight: 600; border-top: 1px solid var(--text-muted); }
 .holgura .big.pos { color: var(--up); } .holgura .big.neg { color: var(--down); }
 .holgura .frase { font-size: 15px; }
 .holgura .como { color: var(--text-muted); font-size: 12px; margin-top: 8px; }
+.pulso-card { max-width: 860px; margin: 0 auto 16px; padding: 20px 22px; }
+.pulso-titulo { font-size: 22px; font-weight: 700; letter-spacing: -.01em; }
+details.mas { border-top: 1px solid var(--border); margin-top: 16px; padding-top: 10px; }
+details.mas summary { cursor: pointer; color: var(--text-secondary); font-size: 13px; font-weight: 600; }
+details.mas[open] summary { margin-bottom: 8px; }
+#campos { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); column-gap: 28px; }
+#campos .btn { justify-self: start; }
+.p-insights { margin: 4px 0 0; padding-left: 18px; font-size: 13px; line-height: 1.45; }
+.p-insights li { margin-bottom: 6px; } .p-insights span { color: var(--text-secondary); }
 footer { color: var(--text-muted); font-size: 12px; margin-top: 24px; }
 </style>
 </head>
@@ -122,11 +131,35 @@ footer { color: var(--text-muted); font-size: 12px; margin-top: 24px; }
   </header>
 
   <nav class="tabs" role="tablist">
-    <button role="tab" data-tab="mercado" aria-selected="true">Mercado</button>
-    <button role="tab" data-tab="costos" aria-selected="false">Pulso McAllen</button>
+    <button role="tab" data-tab="pulso" aria-selected="true">Pulso McAllen</button>
+    <button role="tab" data-tab="mercado" aria-selected="false">Mercado</button>
+    <button role="tab" data-tab="costos" aria-selected="false">Simulador</button>
   </nav>
 
-  <div id="tab-mercado" role="tabpanel">
+  <div id="tab-pulso" role="tabpanel">
+  <section class="card pulso-card">
+    <div class="pulso-titulo" id="p-titulo">Pulso McAllen</div>
+    <div class="sub" id="p-sub"></div>
+    <div class="holgura" id="p-holgura"></div>
+    <div class="kpis pulso" id="p-tarjetas"></div>
+    <h2 style="margin-top:16px">Proyección semanal</h2>
+    <div class="sub" id="p-semana-sub"></div>
+    <div class="kpis pulso" id="p-semana"></div>
+    <h2 style="margin-top:16px">Costo puesto por caja (MXN)</h2>
+    <div class="tabla-wrap"><table id="p-desglose"></table></div>
+    <h2 style="margin-top:16px">Lo relevante del mercado</h2>
+    <ul class="p-insights" id="p-insights"></ul>
+    <h2 style="margin-top:16px">Holgura histórica: cuánto se podía pagar vs. SNIIM</h2>
+    <div class="sub" id="holgura-sub"></div>
+    <div id="g-origen" class="chart sm"></div>
+    <div class="nota">Cuando la línea de precio máximo está arriba del SNIIM, había holgura. Usa los costos de hoy en todas las semanas
+      (con el rendimiento de cada mes), así que muestra cómo se mueve el mercado, no lo que ganamos en años pasados.
+      Fuentes: USDA, Banxico y SNIIM (Secretaría de Economía, limón persa de primera con origen Veracruz).</div>
+    <div class="nota" id="p-nota"></div>
+  </section>
+  </div>
+
+  <div id="tab-mercado" role="tabpanel" hidden>
   <section class="kpis" id="kpis"></section>
 
   <section class="card" style="padding-bottom:16px">
@@ -198,31 +231,31 @@ footer { color: var(--text-muted); font-size: 12px; margin-top: 24px; }
   </div>
 
   <div id="tab-costos" role="tabpanel" hidden>
-  <section class="card" style="padding-bottom:16px">
-    <h2>Pulso diario · McAllen</h2>
+  <section class="card pulso-card">
+    <div class="pulso-titulo" id="pulso-titulo">Simulador</div>
+    <div class="sub">Cambia cualquier costo para ver cómo se mueven la holgura y el margen. No se guarda: al recargar vuelven los valores oficiales.</div>
     <div class="sub" id="pulso-sub"></div>
-    <div class="holgura" id="holgura"></div>
-    <div class="aviso" id="aviso-costos"></div>
-    <div class="calc">
+    <details class="mas" open>
+      <summary>Costos para simular</summary>
       <div class="campos" id="campos"></div>
-      <div>
-        <div class="kpis pulso" id="pulso"></div>
-        <h2 style="margin-top:14px">Proyección semanal</h2>
-        <div class="sub" id="semana-sub"></div>
-        <div class="kpis pulso" id="semana"></div>
-        <h2 style="margin-top:14px">Desglose del costo puesto por caja</h2>
-        <div class="tabla-wrap"><table id="desglose"></table></div>
-        <h2 style="margin-top:14px">Holgura histórica: cuánto se podía pagar vs. SNIIM</h2>
-        <div class="sub" id="holgura-sub"></div>
-        <div id="g-origen" class="chart sm"></div>
-        <div class="nota">Cuando la línea de precio máximo está arriba del SNIIM, había holgura. Usa los costos de hoy en todas las semanas
-          (con el rendimiento de cada mes), así que muestra cómo se mueve el mercado, no lo que ganamos en años pasados.
-          Fuentes: USDA, Banxico y SNIIM (Secretaría de Economía, limón persa de primera con origen Veracruz).</div>
-        <div class="nota">Precio de venta = FOB McAllen de USDA (promedio de calibres 110s–250s, caja de 40 lb) × FIX de Banxico del día.
-          Fruta por caja = kg comprados por camión × precio por kg ÷ cajas por camión. Margen = venta × (1 − comisión) − costo puesto.
-          Compra máxima = lo más que se puede pagar por kilo en origen sin perder, con los demás costos fijos.</div>
-      </div>
-    </div>
+    </details>
+
+
+    <div class="holgura" id="holgura"></div>
+    <div class="kpis pulso" id="pulso"></div>
+    <h2 style="margin-top:16px">Proyección semanal</h2>
+    <div class="sub" id="semana-sub"></div>
+    <div class="kpis pulso" id="semana"></div>
+    <h2 style="margin-top:16px">Costo puesto por caja (MXN)</h2>
+    <div class="tabla-wrap"><table id="desglose"></table></div>
+
+    <details class="mas">
+      <summary>¿Cómo se calcula y qué es estimado?</summary>
+      <div id="como"></div>
+      <div class="aviso" id="aviso-costos"></div>
+      <div class="nota">Precio de venta = FOB McAllen de USDA (promedio de calibres 110s–250s, caja de 40 lb) × FIX de Banxico.
+        Fruta por caja = kg de fruta por camión (según el rendimiento) × precio por kg ÷ cajas por camión. Margen = venta × (1 − comisión) − costo puesto.</div>
+    </details>
   </section>
   </div>
 
@@ -469,8 +502,9 @@ function resultados() {
   const maxOrigen = kgFruta ? (neta - costo + conceptos[0][1]) * cajas / kgFruta : 0;
   const tarjeta = (lbl, val, det, clase = "") => `<div class="kpi"><div class="lbl">${lbl}</div><div class="val ${clase}">${val}</div><div class="det">${det}</div></div>`;
 
+  document.getElementById("pulso-titulo").textContent = "Simulador";
   document.getElementById("pulso-sub").textContent =
-    `Pesos por caja de 40 lb · precio FOB McAllen del ${p.fecha} (${m[c.tier] ? c.tier : "Estándar"}): ${fmt(p.usd)} USD × FIX ${fmt(fx, 4)}`;
+    `Pesos por caja de 40 lb, con precios del último cierre · FOB McAllen del ${p.fecha} (${m[c.tier] ? c.tier : "Estándar"}): ${fmt(p.usd)} USD × FIX ${fmt(fx, 4)}`;
   const holg = maxOrigen - origen.kg, ch = holg >= 0 ? "pos" : "neg";
   const ref = c.fuente === "manual" ? "El precio capturado" : `El SNIIM (${D.origen[c.fuente].nombre})`;
   const ctx = (D.pulso && D.pulso.contexto) || {};
@@ -489,6 +523,8 @@ function resultados() {
     <div class="top"><div class="big ${ch}">${holg >= 0 ? "+" : "−"}$${fmt(Math.abs(holg))}/kg</div>
       <div class="frase">Hoy podemos pagar hasta <b>$${fmt(maxOrigen)}/kg</b> por la fruta sin perder. ${ref} marca <b>$${fmt(origen.kg)}/kg</b>.</div></div>
     ${contexto ? `<div style="font-size:13px;margin-top:6px">${contexto}</div>` : ""}
+`;
+  document.getElementById("como").innerHTML = `
     <div class="como">Sensibilidad: si el FOB sube o baja $1 USD, el precio máximo cambia $${fmt(fx * (1 - c.comision / 100) / kgCaja)}/kg;
       cada $1/kg que cambie la fruta mueve el costo $${fmt(kgCaja)} por caja.</div>
     <div class="como">Cómo se calcula: al precio de venta en McAllen (USDA × tipo de cambio) se le restan empaque, transporte y aduanas y se le suma la venta de merma;
@@ -496,9 +532,9 @@ function resultados() {
       El SNIIM es el precio público del limón persa de Veracruz en central de abasto (Secretaría de Economía): una referencia del mercado, no lo que pagamos exactamente.</div>`;
   document.getElementById("pulso").innerHTML =
     tarjeta("Precio de venta / caja", peso(venta), `${fmt(p.usd)} USD · FOB McAllen`) +
-    tarjeta("Costo puesto McAllen (estimado)", peso(costo), `fruta a precio SNIIM · ${peso(costo * cajas)} por camión`) +
-    tarjeta("Margen bruto / caja (estimado)", peso(margen), `<span class="chip">${(pct * 100).toFixed(1)}% sobre venta</span>`, cls) +
-    tarjeta("Utilidad bruta / camión (estimada)", peso(margen * cajas), `${fmt(cajas, 0)} cajas`, cls);
+    tarjeta("Costo puesto (est.)", peso(costo), `${peso(costo * cajas)} por camión`) +
+    tarjeta("Margen bruto / caja (est.)", peso(margen), `<span class="chip">${(pct * 100).toFixed(1)}% sobre venta</span>`, cls) +
+    tarjeta("Utilidad / camión (est.)", peso(margen * cajas), `${fmt(cajas, 0)} cajas`, cls);
   const vol = cajas * c.camiones;
   document.getElementById("semana-sub").textContent = `Suponiendo ${fmt(c.camiones, 0)} camiones de ${fmt(cajas, 0)} cajas cada uno`;
   document.getElementById("semana").innerHTML =
@@ -563,21 +599,65 @@ matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => todo
 let angosto = innerWidth < 600;
 addEventListener("resize", () => { if ((innerWidth < 600) !== angosto) { angosto = !angosto; gEst(); } });
 
+function pulsoEjecutivo() {
+  const p = D.pulso;
+  if (!p) return;
+  const ctx = p.contexto || {}, cls = p.margen >= 0 ? "pos" : "neg", h = p.holgura;
+  const tarjeta = (lbl, val, det, clase = "") => `<div class="kpi"><div class="lbl">${lbl}</div><div class="val ${clase}">${val}</div><div class="det">${det}</div></div>`;
+  const cambio = (v, etq) => v == null ? "" :
+    `<span class="${v > 0.005 ? "up" : v < -0.005 ? "down" : ""}">${v > 0.005 ? "▲" : v < -0.005 ? "▼" : "="} $${fmt(Math.abs(v))}</span> ${etq}`;
+  const contexto = [cambio(ctx.vs_ayer, `vs. el ${ctx.fecha_ayer}`), cambio(ctx.vs_semana, "vs. hace una semana"),
+    ctx.pct_temporada != null ? `mejor que el ${ctx.pct_temporada}% de las semanas de esta temporada (${ctx.rango_temporada})` : ""]
+    .filter(Boolean).join(" · ");
+  const alerta = ctx.semaforo === "sin" ? "⚠️ Sin holgura" : ctx.semaforo === "baja" ? `⚠️ Holgura baja (menos de $${ctx.umbral}/kg)` : "";
+  document.getElementById("p-titulo").textContent = `Pulso McAllen · ${D.generado.slice(0, 10)}`;
+  document.getElementById("p-sub").textContent = `Pesos por caja de 40 lb, con precios del último cierre · FOB McAllen del ${p.fecha_usda} ` +
+    `(${p.tier}): ${fmt(p.usd_caja)} USD × FIX ${fmt(p.fx, 4)} · fruta a ${fmt(p.precio_fruta_kg)} MXN/kg (${p.fuente_fruta})`;
+  document.getElementById("p-holgura").innerHTML = `
+    ${alerta ? `<div class="down" style="font-weight:600;font-size:13px">${alerta}</div>` : ""}
+    <div class="lbl" style="color:var(--text-secondary);font-size:13px">Holgura de hoy</div>
+    <div class="top"><div class="big ${h >= 0 ? "pos" : "neg"}">${h >= 0 ? "+" : "−"}$${fmt(Math.abs(h))}/kg</div>
+      <div class="frase">Hoy podemos pagar hasta <b>$${fmt(p.precio_max_fruta)}/kg</b> por la fruta sin perder. El SNIIM marca <b>$${fmt(p.precio_fruta_kg)}/kg</b>.</div></div>
+    ${contexto ? `<div style="font-size:13px;margin-top:6px">${contexto}</div>` : ""}
+    <div class="como">Precio de venta en McAllen menos empaque, transporte y aduanas, más venta de merma, entre los kilos de fruta de un camión
+      (rendimiento ${fmt(p.rendimiento, 0)} %). El SNIIM es el precio público en central de abasto: una referencia, no lo que pagamos exactamente.
+      Por eso el costo y el margen son estimados.</div>`;
+  document.getElementById("p-tarjetas").innerHTML =
+    tarjeta("Precio de venta / caja", peso(p.venta), `${fmt(p.usd_caja)} USD · FOB McAllen`) +
+    tarjeta("Costo puesto (est.)", peso(p.costo), `${peso(p.costo * p.cajas)} por camión`) +
+    tarjeta("Margen bruto / caja (est.)", peso(p.margen), `<span class="chip">${(p.pct * 100).toFixed(1)}% sobre venta</span>`, cls) +
+    tarjeta("Utilidad / camión (est.)", peso(p.utilidad_camion), `${fmt(p.cajas, 0)} cajas`, cls);
+  document.getElementById("p-semana-sub").textContent = `${fmt(p.camiones, 0)} camiones de ${fmt(p.cajas, 0)} cajas`;
+  document.getElementById("p-semana").innerHTML =
+    tarjeta("Volumen", fmt(p.semana_cajas, 0), "cajas") +
+    tarjeta("Ventas", peso(p.semana_ventas), "MXN") +
+    tarjeta("Utilidad bruta (est.)", peso(p.semana_utilidad), "MXN", cls);
+  document.getElementById("p-desglose").innerHTML =
+    p.conceptos.map(([n, v]) => `<tr><td>${n}</td><td>${fmt(v, 2)}</td></tr>`).join("") +
+    `<tr class="total"><td>Total</td><td>${fmt(p.costo, 2)}</td></tr>` +
+    `<tr><td>Precio máximo de la fruta sin perder</td><td>${fmt(p.precio_max_fruta, 2)} MXN/kg</td></tr>`;
+  document.getElementById("p-insights").innerHTML = D.insights.slice(0, 3)
+    .map(i => `<li><b>${i.titulo}.</b> <span>${i.texto}</span></li>`).join("");
+  document.getElementById("p-nota").textContent = `Costos: ${C.fuente}. Por confirmar: ${C.por_confirmar}. ` +
+    "Precios: USDA (FOB McAllen), Banxico (FIX) y SNIIM (fruta). Para probar otros costos, usa la pestaña Simulador.";
+}
+
 function pestana(nombre) {
   document.querySelectorAll(".tabs [data-tab]").forEach(b => b.setAttribute("aria-selected", String(b.dataset.tab === nombre)));
-  document.getElementById("tab-mercado").hidden = nombre !== "mercado";
-  document.getElementById("tab-costos").hidden = nombre !== "costos";
+  ["pulso", "mercado", "costos"].forEach(t => document.getElementById(`tab-${t}`).hidden = nombre !== t);
   if (nombre === "mercado") document.querySelectorAll("#tab-mercado .js-plotly-plot").forEach(g => Plotly.Plots.resize(g));
-  if (nombre === "costos") gOrigen();
+  if (nombre === "pulso") gOrigen();
 }
 document.querySelectorAll(".tabs [data-tab]").forEach(b => b.addEventListener("click", () => {
   pestana(b.dataset.tab);
-  try { history.replaceState(null, "", b.dataset.tab === "costos" ? "#costos" : location.pathname + location.search); }
+  const hash = { mercado: "#mercado", costos: "#simulador" }[b.dataset.tab] || "";
+  try { history.replaceState(null, "", hash || location.pathname + location.search); }
   catch (e) {}  // algunos visores (archivo local, vista previa) no permiten cambiar la URL
 }));
 
 kpis(); flujo(); calculadora(); insights(); tabla(); todo(false);
-pestana(location.hash === "#costos" ? "costos" : "mercado");
+pulsoEjecutivo();
+pestana({ "#mercado": "mercado", "#simulador": "costos" }[location.hash] || "pulso");
 </script>
 </body>
 </html>
