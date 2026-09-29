@@ -11,8 +11,8 @@
   "precio_fruta_oscar": 20,
   "precio_fruta": {
     "fuente": "jalapa",
-    "ajuste": 4,
-    "_nota": "Ajuste calibrado el 29/09/2026: Oscar ~20 MXN/kg en huerta vs. SNIIM Jalapa 16 MXN/kg."
+    "ajuste": 0,
+    "_nota": "Solo SNIIM Jalapa. Con +4 (Oscar ~20 vs SNIIM 16 el 29/09/2026) el histórico daba pérdida 2 de cada 3 semanas, poco creíble."
   },
   "merma": {"precio_segunda": 2, "precio_tercera": 0.5, "pct_segunda": 50},
   "empaque": [
