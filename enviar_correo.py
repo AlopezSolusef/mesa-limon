@@ -35,6 +35,44 @@ def peso(v, d=0):
     return f"{'−' if v < 0 else ''}${abs(v):,.{d}f}"
 
 
+def grafica_holgura(hh, anios=2):
+    """PNG de la holgura histórica (precio máximo pagable vs. SNIIM), últimos `anios` años, para incrustar en el correo."""
+    import io
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.dates as mdates
+    import matplotlib.pyplot as plt
+    import pandas as pd
+
+    d = pd.DataFrame({"max": hh["max"], "sniim": hh["sniim"]}, index=pd.to_datetime(hh["x"])).dropna()
+    d = d[d.index >= d.index.max() - pd.DateOffset(years=anios)]
+    azul, naranja = "#2a78d6", "#eb6834"
+    fig, ax = plt.subplots(figsize=(6.0, 2.5), dpi=200)
+    fig.patch.set_facecolor("#ffffff")
+    ax.fill_between(d.index, d["max"], d["sniim"], where=d["max"] >= d["sniim"], color=azul, alpha=0.08, linewidth=0)
+    ax.plot(d.index, d["max"], color=azul, linewidth=1.8, label="Precio máximo pagable")
+    ax.plot(d.index, d["sniim"], color=naranja, linewidth=1.8, label="SNIIM (referencia de la fruta)")
+    for serie, color in ((d["max"], azul), (d["sniim"], naranja)):  # valor de la última semana
+        ax.annotate(f"${serie.iloc[-1]:.0f}", (serie.index[-1], serie.iloc[-1]), xytext=(4, 0), textcoords="offset points",
+                    va="center", fontsize=7, color=color, fontweight="bold")
+    meses = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"]
+    ax.xaxis.set_major_locator(mdates.MonthLocator(bymonth=[1, 4, 7, 10]))
+    ax.xaxis.set_major_formatter(plt.FuncFormatter(lambda x, _: f"{meses[mdates.num2date(x).month - 1]} {mdates.num2date(x):%y}"))
+    ax.set_ylim(0, max(d["max"].max(), d["sniim"].max()) * 1.12)
+    ax.set_ylabel("MXN por kg", fontsize=7, color="#52514e")
+    ax.tick_params(labelsize=7, colors="#52514e", length=0)
+    ax.grid(axis="y", color="#ecebe7", linewidth=0.8)
+    for lado in ("top", "right", "left"):
+        ax.spines[lado].set_visible(False)
+    ax.spines["bottom"].set_color("#e3e2de")
+    ax.legend(loc="upper left", fontsize=7, frameon=False, ncol=2, bbox_to_anchor=(0, 1.15))
+    fig.tight_layout()
+    buf = io.BytesIO()
+    fig.savefig(buf, format="png")
+    plt.close(fig)
+    return buf.getvalue()
+
+
 def tarjeta(etiqueta, valor, detalle, color=TINTA):
     return f"""<td style="padding:6px;width:50%;vertical-align:top">
   <div style="border:1px solid {BORDE};border-radius:8px;padding:12px 14px;background:#ffffff">
@@ -44,7 +82,7 @@ def tarjeta(etiqueta, valor, detalle, color=TINTA):
   </div></td>"""
 
 
-def armar(d):
+def armar(d, src_grafica="cid:holgura"):
     p, costos = d["pulso"], d["costos"]
     color = VERDE if p["margen"] >= 0 else ROJO
     fecha_hoy = HOY.strftime("%d/%m/%Y")
@@ -73,6 +111,13 @@ def armar(d):
     desglose = "".join(
         f"<tr><td style='padding:4px 0;color:{SEC}'>{escape(n)}</td><td style='padding:4px 0;text-align:right'>{v:,.2f}</td></tr>"
         for n, v in p["conceptos"])
+    hh = d.get("holgura_hist")
+    grafica = "" if not (hh and src_grafica) else f"""<tr><td style="padding:14px 6px 0">
+    <div style="font-size:14px;font-weight:700">Holgura histórica (últimos 2 años)</div>
+    <div style="font-size:12px;color:{SEC};margin:2px 0 6px">Cuánto se podía pagar por la fruta cada semana vs. lo que marcaba el SNIIM ·
+      desde {hh['desde']}, hubo holgura en {hh['semanas_con_holgura']}% de las semanas</div>
+    <img src="{src_grafica}" width="588" alt="Gráfica de holgura histórica" style="width:100%;max-width:588px;height:auto;border:1px solid {BORDE};border-radius:8px;display:block">
+  </td></tr>"""
     insights = "".join(
         f"<li style='margin:0 0 8px'><b>{escape(i['titulo'])}.</b> <span style='color:{SEC}'>{escape(i['texto'])}</span></li>"
         for i in d["insights"][:3])
@@ -124,6 +169,7 @@ def armar(d):
     <div style="font-size:14px;font-weight:700;margin-bottom:6px">Lo relevante del mercado</div>
     <ul style="margin:0;padding-left:18px;font-size:13px;line-height:1.45">{insights}</ul>
   </td></tr>
+  {grafica}
   <tr><td align="center" style="padding:18px 6px">
     <a href="{URL_DASHBOARD}" style="background:{AZUL};color:#ffffff;text-decoration:none;padding:10px 20px;border-radius:6px;font-size:14px;font-weight:600;display:inline-block">Abrir dashboard</a>
   </td></tr>
@@ -152,9 +198,12 @@ def main():
     d = json.loads((AQUI / "pulso.json").read_text(encoding="utf-8"))
     if not d.get("pulso"):
         sys.exit("pulso.json no tiene precio de USDA; no se envía el correo")
-    asunto, html, texto = armar(d)
+    png = grafica_holgura(d["holgura_hist"]) if d.get("holgura_hist") else None
 
     if "--vista" in sys.argv:
+        asunto, html, texto = armar(d, "correo_grafica.png" if png else None)
+        if png:
+            (AQUI / "correo_grafica.png").write_bytes(png)
         (AQUI / "correo_vista.html").write_text(html, encoding="utf-8")
         print("Asunto:", asunto)
         print("Vista previa:", AQUI / "correo_vista.html")
@@ -167,6 +216,7 @@ def main():
     if not para:
         sys.exit("Falta CORREO_PARA")
 
+    asunto, html, texto = armar(d, "cid:holgura" if png else None)
     msg = EmailMessage()
     msg["Subject"] = asunto
     msg["From"] = f"Pulso McAllen <{usuario}>"
@@ -175,6 +225,8 @@ def main():
         msg["Cc"] = ", ".join(cc)
     msg.set_content(texto)
     msg.add_alternative(html, subtype="html")
+    if png:  # la gráfica va incrustada en el cuerpo, no como adjunto
+        msg.get_payload()[1].add_related(png, maintype="image", subtype="png", cid="<holgura>", filename="holgura.png")
 
     servidor = os.getenv("SMTP_SERVIDOR", "smtp.gmail.com").strip()
     with smtplib.SMTP(servidor, 587, timeout=60) as s:

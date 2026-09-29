@@ -466,6 +466,7 @@ def construir(usda, fx, ct, espejo, census=None, terminales=None, sniim=None):
                                                       datos["pulso"]["holgura"], datos["holgura_hist"])
     (AQUI / "pulso.json").write_text(json.dumps(limpiar({
         "pulso": datos["pulso"], "insights": datos["insights"], "costos": datos["costos"],
+        "holgura_hist": datos["holgura_hist"],
         "fx_fecha": datos["kpi"]["fx_fecha"], "generado": datos["generado"]}), ensure_ascii=False, indent=1,
         default=str), encoding="utf-8")
     html = (AQUI / "plantilla_dashboard.html").read_text(encoding="utf-8")
