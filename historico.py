@@ -461,6 +461,9 @@ def construir(usda, fx, ct, espejo, census=None, terminales=None, sniim=None):
     # Pulso con costos base: lo usa el correo diario (enviar_correo.py)
     datos["pulso"] = calcular_pulso(cadena, datos["origen"], datos["costos"], fx_hoy)
     datos["holgura_hist"] = holgura_historica(diario, fx, sniim, datos["costos"])
+    if datos["pulso"]:
+        datos["pulso"]["contexto"] = contexto_holgura(diario, fx, sniim, datos["costos"],
+                                                      datos["pulso"]["holgura"], datos["holgura_hist"])
     (AQUI / "pulso.json").write_text(json.dumps(limpiar({
         "pulso": datos["pulso"], "insights": datos["insights"], "costos": datos["costos"],
         "fx_fecha": datos["kpi"]["fx_fecha"], "generado": datos["generado"]}), ensure_ascii=False, indent=1,
@@ -471,6 +474,59 @@ def construir(usda, fx, ct, espejo, census=None, terminales=None, sniim=None):
     (AQUI / "sitio").mkdir(exist_ok=True)
     (AQUI / "sitio" / "index.html").write_text(html, encoding="utf-8")  # lo que publica GitHub Pages
     print(f"  Dashboard: {AQUI / 'dashboard.html'}")
+
+
+def maximo_pagable(neta, costos):
+    """Precio máximo de la fruta (MXN/kg) para una serie de precios de venta netos (MXN/caja) indexada por fecha."""
+    cajas = costos["cajas_por_camion"]
+    fijo = (sum(n * pu for _, n, pu in costos["empaque"]) + costos["transporte"]
+            + sum(v for _, v in costos["aduanas"])) / cajas
+    mr = costos["merma"]
+    precio_merma = (mr["precio_segunda"] * mr["pct_segunda"] + mr["precio_tercera"] * (100 - mr["pct_segunda"])) / 100
+    rend = neta.index.month.map(lambda m: costos["rendimiento_pct_por_mes"][str(m)]).astype(float)
+    kg_empacado = cajas * KG_POR_CAJA_40LB
+    kg_fruta = kg_empacado / rend * 100
+    merma = (kg_fruta - kg_empacado) * precio_merma / cajas
+    return (neta - fijo + merma) * cajas / kg_fruta
+
+
+def contexto_holgura(diario, fx, sniim, costos, holgura_hoy, hist):
+    """Holgura de hoy contra el reporte anterior, contra hace una semana y contra la misma temporada de otros años."""
+    pf = costos["precio_fruta"]
+    ref = (sniim or {}).get(pf["fuente"] if pf["fuente"] != "manual" else "jalapa")
+    if ref is None or "Estándar" not in diario:
+        return {}
+    fob = diario["Estándar"].dropna()
+    d = pd.DataFrame({"fob": fob}).reset_index()
+    d = pd.merge_asof(d, fx[["fecha", "USD/MXN"]].dropna().sort_values("fecha"), on="fecha")
+    sn = ref.assign(fecha=pd.to_datetime(ref["fecha"])).sort_values("fecha")[["fecha", "frec"]]
+    d = pd.merge_asof(d, sn, on="fecha").set_index("fecha").dropna()
+    d = d[d.index >= d.index.max() - pd.Timedelta(days=30)]
+    neta = d["fob"] * d["USD/MXN"] * (1 - costos["comision_pct"] / 100)
+    h = maximo_pagable(neta, costos) - (d["frec"] + pf["ajuste"])
+    out = {}
+    if len(h) >= 2:
+        out["vs_ayer"] = holgura_hoy - h.iloc[-2]
+        out["fecha_ayer"] = h.index[-2].strftime("%d/%m")
+    semana = h[h.index <= h.index[-1] - pd.Timedelta(days=7)]
+    if len(semana):
+        out["vs_semana"] = holgura_hoy - semana.iloc[-1]
+    # misma temporada (±2 semanas del año) en los últimos 10 años
+    if hist:
+        w = pd.DataFrame({"h": pd.Series(hist["max"]) - pd.Series(hist["sniim"])}).set_index(pd.to_datetime(hist["x"]))
+        hoy = h.index[-1]
+        sem, anio = hoy.isocalendar().week, hoy.year
+        dist = (w.index.isocalendar().week.astype(int) - sem).abs()
+        dist = dist.where(dist <= 26, 52 - dist)
+        mismas = w[(dist <= 2).values & (w.index.year < anio) & (w.index.year >= anio - ANIOS_COMPARACION)]["h"].dropna()
+        if len(mismas) >= 10:
+            out["pct_temporada"] = round(float((mismas < holgura_hoy).mean() * 100))
+            out["rango_temporada"] = f"{anio - ANIOS_COMPARACION}–{anio - 1}"
+    # semáforo
+    umbral = costos.get("alerta_holgura_kg", 2)
+    out["semaforo"] = "sin" if holgura_hoy < 0 else "baja" if holgura_hoy < umbral else "ok"
+    out["umbral"] = umbral
+    return out
 
 
 def holgura_historica(diario, fx, sniim, costos, desde="2016-01-01"):
@@ -486,17 +542,7 @@ def holgura_historica(diario, fx, sniim, costos, desde="2016-01-01"):
         "sniim": ref.assign(fecha=pd.to_datetime(ref["fecha"])).set_index("fecha")["frec"].resample("W-FRI").mean(),
     }).dropna()
     w = w[w.index >= desde]
-    cajas = costos["cajas_por_camion"]
-    fijo = (sum(n * pu for _, n, pu in costos["empaque"]) + costos["transporte"]
-            + sum(v for _, v in costos["aduanas"])) / cajas
-    mr = costos["merma"]
-    precio_merma = (mr["precio_segunda"] * mr["pct_segunda"] + mr["precio_tercera"] * (100 - mr["pct_segunda"])) / 100
-    rend = w.index.month.map(lambda m: costos["rendimiento_pct_por_mes"][str(m)]).astype(float)
-    kg_empacado = cajas * KG_POR_CAJA_40LB
-    kg_fruta = kg_empacado / rend * 100
-    merma = (kg_fruta - kg_empacado) * precio_merma / cajas
-    neta = w["fob"] * w["fx"] * (1 - costos["comision_pct"] / 100)
-    maximo = (neta - fijo + merma) * cajas / kg_fruta
+    maximo = maximo_pagable(w["fob"] * w["fx"] * (1 - costos["comision_pct"] / 100), costos)
     return {"x": w.index.strftime("%Y-%m-%d").tolist(), "max": maximo.round(2).tolist(),
             "sniim": (w["sniim"] + pf["ajuste"]).round(2).tolist(),
             "semanas_con_holgura": round(float((maximo > w["sniim"] + pf["ajuste"]).mean() * 100)),

@@ -473,10 +473,24 @@ function resultados() {
     `Pesos por caja de 40 lb · precio FOB McAllen del ${p.fecha} (${m[c.tier] ? c.tier : "Estándar"}): ${fmt(p.usd)} USD × FIX ${fmt(fx, 4)}`;
   const holg = maxOrigen - origen.kg, ch = holg >= 0 ? "pos" : "neg";
   const ref = c.fuente === "manual" ? "El precio capturado" : `El SNIIM (${D.origen[c.fuente].nombre})`;
+  const ctx = (D.pulso && D.pulso.contexto) || {};
+  const simulando = Object.keys(BASE).some(k => costos[k] !== BASE[k]);  // el contexto solo aplica a los valores base
+  const cambio = (v, etq) => v == null ? "" :
+    `<span class="${v > 0.005 ? "up" : v < -0.005 ? "down" : ""}">${v > 0.005 ? "▲" : v < -0.005 ? "▼" : "="} $${fmt(Math.abs(v))}</span> ${etq}`;
+  const contexto = simulando ? "" : [cambio(ctx.vs_ayer, `vs. el ${ctx.fecha_ayer}`), cambio(ctx.vs_semana, "vs. hace una semana"),
+    ctx.pct_temporada != null ? `mejor que el ${ctx.pct_temporada}% de las semanas de esta temporada (${ctx.rango_temporada})` : ""]
+    .filter(Boolean).join(" · ");
+  const umbral = C.alerta_holgura_kg ?? 2;
+  const alerta = holg < 0 ? "⚠️ Sin holgura" : holg < umbral ? `⚠️ Holgura baja (menos de $${umbral}/kg)` : "";
+  const kgCaja = kgFruta / cajas;
   document.getElementById("holgura").innerHTML = `
+    ${alerta ? `<div class="down" style="font-weight:600;font-size:13px">${alerta}</div>` : ""}
     <div class="lbl" style="color:var(--text-secondary);font-size:13px">Holgura de hoy</div>
     <div class="top"><div class="big ${ch}">${holg >= 0 ? "+" : "−"}$${fmt(Math.abs(holg))}/kg</div>
       <div class="frase">Hoy podemos pagar hasta <b>$${fmt(maxOrigen)}/kg</b> por la fruta sin perder. ${ref} marca <b>$${fmt(origen.kg)}/kg</b>.</div></div>
+    ${contexto ? `<div style="font-size:13px;margin-top:6px">${contexto}</div>` : ""}
+    <div class="como">Sensibilidad: si el FOB sube o baja $1 USD, el precio máximo cambia $${fmt(fx * (1 - c.comision / 100) / kgCaja)}/kg;
+      cada $1/kg que cambie la fruta mueve el costo $${fmt(kgCaja)} por caja.</div>
     <div class="como">Cómo se calcula: al precio de venta en McAllen (USDA × tipo de cambio) se le restan empaque, transporte y aduanas y se le suma la venta de merma;
       lo que queda se divide entre los kilos de fruta que necesita un camión (rendimiento ${fmt(c.rend, 0)} % este mes). Todo eso son datos firmes.
       El SNIIM es el precio público del limón persa de Veracruz en central de abasto (Secretaría de Economía): una referencia del mercado, no lo que pagamos exactamente.</div>`;

@@ -51,7 +51,22 @@ def armar(d):
     h = p["holgura"]
     signo_h = "+" if h >= 0 else "−"
     color_h = VERDE if h >= 0 else ROJO
-    asunto = f"Pulso McAllen · {fecha_hoy} · holgura {signo_h}${abs(h):.2f}/kg · margen est. {peso(p['margen'])}/caja"
+    ctx = p.get("contexto", {})
+    aviso = {"sin": "⚠️ Sin holgura · ", "baja": "⚠️ Holgura baja · "}.get(ctx.get("semaforo"), "")
+    asunto = f"{aviso}Pulso McAllen · {fecha_hoy} · holgura {signo_h}${abs(h):.2f}/kg · margen est. {peso(p['margen'])}/caja"
+
+    def cambio(v, etiqueta):  # ▲ $0.29 vs. el 25/09
+        if v is None:
+            return ""
+        flecha, col = ("▲", VERDE) if v > 0.005 else ("▼", ROJO) if v < -0.005 else ("=", SEC)
+        return f"<span style='color:{col}'>{flecha} ${abs(v):.2f}</span> {etiqueta}"
+    partes = [cambio(ctx.get("vs_ayer"), f"vs. el {ctx.get('fecha_ayer', '')}"),
+              cambio(ctx.get("vs_semana"), "vs. hace una semana")]
+    if "pct_temporada" in ctx:
+        partes.append(f"mejor que el {ctx['pct_temporada']}% de las semanas de esta temporada ({ctx['rango_temporada']})")
+    linea_contexto = " · ".join(x for x in partes if x)
+    alerta_html = (f"<div style='font-size:13px;font-weight:700;color:{ROJO};margin-bottom:4px'>"
+                   f"{aviso.replace(' · ', '')}: por debajo de ${ctx.get('umbral', 2)}/kg</div>") if aviso else ""
 
     fuentes = (f"Precio FOB McAllen del {p['fecha_usda']} ({p['tier']}): {p['usd_caja']:.2f} USD/caja × FIX {p['fx']:.4f} "
                f"({d['fx_fecha']}) · fruta a {p['precio_fruta_kg']:.2f} MXN/kg ({escape(p['fuente_fruta'])})")
@@ -72,10 +87,11 @@ def armar(d):
   </td></tr>
   <tr><td style="padding:6px">
     <div style="border:1px solid {BORDE};border-radius:10px;padding:14px 16px;background:#ffffff">
-      <div style="font-size:13px;color:{SEC}">Holgura de hoy</div>
+      {alerta_html}<div style="font-size:13px;color:{SEC}">Holgura de hoy</div>
       <div style="font-size:32px;font-weight:700;color:{color_h}">{signo_h}${abs(h):,.2f}/kg</div>
       <div style="font-size:15px">Hoy podemos pagar hasta <b>${p['precio_max_fruta']:,.2f}/kg</b> por la fruta sin perder.
         El SNIIM marca <b>${p['precio_fruta_kg']:,.2f}/kg</b>.</div>
+      <div style="font-size:13px;margin-top:6px">{linea_contexto}</div>
       <div style="font-size:12px;color:{MUTED};margin-top:6px">Precio de venta en McAllen menos empaque, transporte y aduanas, más venta de merma,
         entre los kilos de fruta de un camión (rendimiento {p['rendimiento']:g}%). El SNIIM es el precio público en central de abasto:
         una referencia, no lo que pagamos exactamente. Por eso el costo y el margen de abajo son estimados.</div>

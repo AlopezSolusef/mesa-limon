@@ -32,5 +32,7 @@
     ["Aduanas México y EE. UU. (aprox.)", 5000]
   ],
   "comision_pct": 0,
-  "camiones_por_semana": 3
+  "camiones_por_semana": 3,
+  "alerta_holgura_kg": 2,
+  "_alerta": "Si la holgura baja de este valor (MXN/kg), el correo avisa con ⚠️ en el asunto."
 }
