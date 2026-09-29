@@ -491,10 +491,17 @@ def calcular_pulso(cadena, origen, costos, fx, tier="Estándar"):
     cajas = costos["cajas_por_camion"]
     empaque = sum(n * pu for _, n, pu in costos["empaque"])
     aduanas = sum(v for _, v in costos["aduanas"])
-    conceptos = [("Fruta", costos["kg_fruta_por_camion"] * precio_kg / cajas),
+    rend = costos["rendimiento_pct_por_mes"][str(datetime.now(HORA_CDMX).month)]  # varía por temporada
+    mr = costos["merma"]
+    precio_merma = (mr["precio_segunda"] * mr["pct_segunda"] + mr["precio_tercera"] * (100 - mr["pct_segunda"])) / 100
+    kg_empacado = cajas * KG_POR_CAJA_40LB
+    kg_fruta = kg_empacado / rend * 100
+    kg_merma = kg_fruta - kg_empacado
+    conceptos = [("Fruta", kg_fruta * precio_kg / cajas),
                  ("Empaque", empaque / cajas),
                  ("Transporte a McAllen", costos["transporte"] / cajas),
-                 ("Aduanas", aduanas / cajas)]
+                 ("Aduanas", aduanas / cajas),
+                 ("Venta de merma", -kg_merma * precio_merma / cajas)]
     costo = sum(v for _, v in conceptos)
     neta = venta * (1 - costos["comision_pct"] / 100)
     margen = neta - costo
@@ -506,7 +513,8 @@ def calcular_pulso(cadena, origen, costos, fx, tier="Estándar"):
         "utilidad_camion": margen * cajas, "cajas": cajas, "camiones": costos["camiones_por_semana"],
         "semana_cajas": semanal, "semana_ventas": neta * semanal, "semana_utilidad": margen * semanal,
         "conceptos": conceptos,
-        "precio_max_fruta": (neta - costo + conceptos[0][1]) * cajas / costos["kg_fruta_por_camion"],
+        "precio_max_fruta": (neta - costo + conceptos[0][1]) * cajas / kg_fruta,
+        "rendimiento": rend, "kg_fruta": kg_fruta,
     }
 
 

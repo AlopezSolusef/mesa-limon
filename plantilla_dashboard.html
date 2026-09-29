@@ -368,7 +368,9 @@ const C = D.costos;
 const suma = xs => xs.reduce((a, x) => a + x, 0);
 const BASE = {  // valores oficiales (costos.json); al recargar la página se vuelve a ellos
   fuente: C.precio_fruta.fuente, ajuste: C.precio_fruta.ajuste, origen: C.precio_fruta_oscar,
-  kg: C.kg_fruta_por_camion, empaque: suma(C.empaque.map(([, n, p]) => n * p)), transporte: C.transporte,
+  rend: C.rendimiento_pct_por_mes[String(new Date().getMonth() + 1)],  // rendimiento del mes (varía por temporada)
+  merma: (C.merma.precio_segunda * C.merma.pct_segunda + C.merma.precio_tercera * (100 - C.merma.pct_segunda)) / 100,
+  empaque: suma(C.empaque.map(([, n, p]) => n * p)), transporte: C.transporte,
   aduanas: suma(C.aduanas.map(([, v]) => v)), comision: C.comision_pct, cajas: C.cajas_por_camion,
   camiones: C.camiones_por_semana, tier: "Estándar" };
 const FUENTES = { jalapa: "SNIIM Jalapa", iztapalapa: "SNIIM CDMX", manual: "Manual" };
@@ -381,7 +383,8 @@ function precioOrigen(c) {  // MXN/kg y de dónde sale
 const CAMPOS = [  // [clave, nombre, unidad, paso] · mismo formato que el Excel de Oscar
   ["ajuste", "Ajuste vs. SNIIM", "MXN/kg: diferencia entre lo que pagamos en huerta y el SNIIM", 0.5],
   ["origen", "Precio de la fruta", "MXN por kg", 0.5],
-  ["kg", "Fruta por camión", "kg comprados en huerta", 100],
+  ["rend", "Rendimiento", "% de la fruta que sale como caja de exportación (este mes)", 1],
+  ["merma", "Venta de merma", "MXN/kg promedio de segundas y terceras", 0.25],
   ["empaque", "Empaque", "MXN por camión (cartón, maquila, tarimas…)", 100],
   ["transporte", "Transporte a McAllen", "MXN por camión", 500],
   ["aduanas", "Aduanas", "MXN por camión (México + EE. UU.)", 100],
@@ -441,16 +444,20 @@ function resultados() {
   const detalleAduanas = esBase("aduanas", c.aduanas)
     ? C.aduanas.map(([nom, v]) => `${nom} ${peso(v)}`).join(" + ") + ` ÷ ${fmt(cajas, 0)} cajas`
     : `${peso(c.aduanas)} ÷ ${fmt(cajas, 0)} cajas`;
+  const kgEmpacado = cajas * D.tabla.kg;                      // kg que salen en cajas de 40 lb
+  const kgFruta = kgEmpacado / Math.max(c.rend, 1) * 100;      // kg que hay que comprar en huerta
+  const kgMerma = kgFruta - kgEmpacado;                        // segundas y terceras
   const conceptos = [
-    ["Fruta", c.kg * origen.kg / cajas, `${fmt(c.kg, 0)} kg × ${fmt(origen.kg)} MXN/kg (${origen.texto}) ÷ ${fmt(cajas, 0)} cajas`],
+    ["Fruta", kgFruta * origen.kg / cajas, `${fmt(kgFruta, 0)} kg (rendimiento ${fmt(c.rend, 1)} %) × ${fmt(origen.kg)} MXN/kg (${origen.texto}) ÷ ${fmt(cajas, 0)} cajas`],
     ["Empaque", c.empaque / cajas, detalleEmpaque],
     ["Transporte a McAllen", c.transporte / cajas, `${peso(c.transporte)} ÷ ${fmt(cajas, 0)} cajas`],
     ["Aduanas", c.aduanas / cajas, detalleAduanas],
+    ["Venta de merma", -kgMerma * c.merma / cajas, `${fmt(kgMerma, 0)} kg de segundas y terceras × ${fmt(c.merma)} MXN/kg (resta al costo)`],
   ];
   const costo = suma(conceptos.map(x => x[1]));
   const neta = venta * (1 - c.comision / 100), margen = neta - costo;
   const pct = venta ? margen / venta : 0, cls = margen >= 0 ? "pos" : "neg";
-  const maxOrigen = c.kg ? (neta - costo + conceptos[0][1]) * cajas / c.kg : 0;
+  const maxOrigen = kgFruta ? (neta - costo + conceptos[0][1]) * cajas / kgFruta : 0;
   const tarjeta = (lbl, val, det, clase = "") => `<div class="kpi"><div class="lbl">${lbl}</div><div class="val ${clase}">${val}</div><div class="det">${det}</div></div>`;
 
   document.getElementById("pulso-sub").textContent =

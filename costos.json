@@ -1,11 +1,20 @@
 {
-  "_nota": "Costos por camión para el Pulso McAllen. Fuente: hoja 'Gastos Fijos' de Oscar (V-040). Montos en MXN.",
-  "fuente": "Oscar, hoja Gastos Fijos V-040 (15/09/2025)",
-  "por_confirmar": "vigencia de los montos, aduana de EE. UU. en $0 y venta de merma",
+  "_nota": "Costos por camión para el Pulso McAllen. Montos en MXN. Se actualiza aquí cuando cambien.",
+  "fuente": "Oscar: hoja Gastos Fijos V-040 y audios del 29/09/2026",
+  "por_confirmar": "reparto de la merma entre segundas y terceras (se supone 50/50)",
   "cajas_por_camion": 1080,
-  "kg_fruta_por_camion": 23000,
-  "precio_fruta_oscar": 17,
-  "precio_fruta": {"fuente": "jalapa", "ajuste": 0},
+  "rendimiento_pct_por_mes": {
+    "_nota": "% de la fruta comprada que sale como caja de exportación. Oscar: ~80% hoy, >90% en invierno, 65-70% en verano.",
+    "1": 90, "2": 90, "3": 80, "4": 80, "5": 80, "6": 67.5,
+    "7": 67.5, "8": 67.5, "9": 80, "10": 80, "11": 80, "12": 90
+  },
+  "precio_fruta_oscar": 20,
+  "precio_fruta": {
+    "fuente": "jalapa",
+    "ajuste": 4,
+    "_nota": "Ajuste calibrado el 29/09/2026: Oscar ~20 MXN/kg en huerta vs. SNIIM Jalapa 16 MXN/kg."
+  },
+  "merma": {"precio_segunda": 2, "precio_tercera": 0.5, "pct_segunda": 50},
   "empaque": [
     ["Cartón", 1080, 31.28],
     ["Maquila", 1080, 14],
@@ -20,8 +29,7 @@
   ],
   "transporte": 40000,
   "aduanas": [
-    ["Aduana México", 2550],
-    ["Aduana EE. UU.", 0]
+    ["Aduanas México y EE. UU. (aprox.)", 5000]
   ],
   "comision_pct": 0,
   "camiones_por_semana": 3
