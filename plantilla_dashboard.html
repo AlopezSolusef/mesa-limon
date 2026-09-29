@@ -102,6 +102,12 @@ td.pos { color: var(--up); font-weight: 600; } td.neg { color: var(--down); font
 .pulso .val.pos { color: var(--up); } .pulso .val.neg { color: var(--down); }
 .chip { display: inline-block; font-size: 11px; font-weight: 600; padding: 1px 8px; border-radius: 10px; background: var(--grid); color: var(--text-secondary); }
 tr.total td { font-weight: 600; border-top: 1px solid var(--text-muted); }
+.holgura { border: 1px solid var(--border); border-radius: 10px; padding: 16px 18px; margin: 12px 0; background: var(--surface-1); }
+.holgura .top { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 16px; }
+.holgura .big { font-size: 34px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.holgura .big.pos { color: var(--up); } .holgura .big.neg { color: var(--down); }
+.holgura .frase { font-size: 15px; }
+.holgura .como { color: var(--text-muted); font-size: 12px; margin-top: 8px; }
 footer { color: var(--text-muted); font-size: 12px; margin-top: 24px; }
 </style>
 </head>
@@ -195,6 +201,7 @@ footer { color: var(--text-muted); font-size: 12px; margin-top: 24px; }
   <section class="card" style="padding-bottom:16px">
     <h2>Pulso diario · McAllen</h2>
     <div class="sub" id="pulso-sub"></div>
+    <div class="holgura" id="holgura"></div>
     <div class="aviso" id="aviso-costos"></div>
     <div class="calc">
       <div class="campos" id="campos"></div>
@@ -205,11 +212,12 @@ footer { color: var(--text-muted); font-size: 12px; margin-top: 24px; }
         <div class="kpis pulso" id="semana"></div>
         <h2 style="margin-top:14px">Desglose del costo puesto por caja</h2>
         <div class="tabla-wrap"><table id="desglose"></table></div>
-        <h2 style="margin-top:14px">Precio del limón en origen (SNIIM)</h2>
-        <div class="sub">Limón persa de primera con origen Veracruz, precio frecuente en central de abasto · promedio semanal, MXN/kg</div>
+        <h2 style="margin-top:14px">Holgura histórica: cuánto se podía pagar vs. SNIIM</h2>
+        <div class="sub" id="holgura-sub"></div>
         <div id="g-origen" class="chart sm"></div>
-        <div class="nota">Compra en origen = precio SNIIM del día + ajuste. El SNIIM es precio de mayoreo en central de abasto, no de huerta:
-          calibra el ajuste con lo que realmente se paga en Martínez de la Torre. Fuente: SNIIM, Secretaría de Economía (producto 426, origen Veracruz).</div>
+        <div class="nota">Cuando la línea de precio máximo está arriba del SNIIM, había holgura. Usa los costos de hoy en todas las semanas
+          (con el rendimiento de cada mes), así que muestra cómo se mueve el mercado, no lo que ganamos en años pasados.
+          Fuentes: USDA, Banxico y SNIIM (Secretaría de Economía, limón persa de primera con origen Veracruz).</div>
         <div class="nota">Precio de venta = FOB McAllen de USDA (promedio de calibres 110s–250s, caja de 40 lb) × FIX de Banxico del día.
           Fruta por caja = kg comprados por camión × precio por kg ÷ cajas por camión. Margen = venta × (1 − comisión) − costo puesto.
           Compra máxima = lo más que se puede pagar por kilo en origen sin perder, con los demás costos fijos.</div>
@@ -411,8 +419,9 @@ function calculadora() {
   const oculto = costos.fuente === "manual" ? "ajuste" : "origen";
   const o = precioOrigen(costos);
   document.getElementById("aviso-costos").innerHTML =
-    `<b>Costos de ${C.fuente}.</b> Por confirmar: ${C.por_confirmar}. El precio de venta y el de la fruta se actualizan solos (USDA, Banxico, SNIIM).
-     Puedes cambiar cualquier valor para simular; al recargar la página vuelven los valores base.`;
+    `<b>Datos firmes:</b> precio de venta en McAllen (USDA), tipo de cambio (Banxico) y costos de ${C.fuente}.
+     <b>Estimado:</b> el precio de la fruta, que se toma del SNIIM (referencia pública, no lo que pagamos exactamente); por eso el costo puesto y el margen son estimados.
+     Por confirmar: ${C.por_confirmar}. Puedes cambiar cualquier valor para simular; al recargar la página vuelven los valores base.`;
   document.getElementById("campos").innerHTML =
     `<label><span>Precio de la fruta<small>hoy: <b>${fmt(o.kg)} MXN/kg</b> · ${o.texto}${C.precio_fruta_oscar ? ` · hoja de Oscar: ${fmt(C.precio_fruta_oscar)}` : ""}</small></span><select data-k="fuente">${
       Object.entries(FUENTES).map(([k, n]) => `<option value="${k}"${k === costos.fuente ? " selected" : ""}>${n}</option>`).join("")}</select></label>` +
@@ -462,11 +471,20 @@ function resultados() {
 
   document.getElementById("pulso-sub").textContent =
     `Pesos por caja de 40 lb · precio FOB McAllen del ${p.fecha} (${m[c.tier] ? c.tier : "Estándar"}): ${fmt(p.usd)} USD × FIX ${fmt(fx, 4)}`;
+  const holg = maxOrigen - origen.kg, ch = holg >= 0 ? "pos" : "neg";
+  const ref = c.fuente === "manual" ? "El precio capturado" : `El SNIIM (${D.origen[c.fuente].nombre})`;
+  document.getElementById("holgura").innerHTML = `
+    <div class="lbl" style="color:var(--text-secondary);font-size:13px">Holgura de hoy</div>
+    <div class="top"><div class="big ${ch}">${holg >= 0 ? "+" : "−"}$${fmt(Math.abs(holg))}/kg</div>
+      <div class="frase">Hoy podemos pagar hasta <b>$${fmt(maxOrigen)}/kg</b> por la fruta sin perder. ${ref} marca <b>$${fmt(origen.kg)}/kg</b>.</div></div>
+    <div class="como">Cómo se calcula: al precio de venta en McAllen (USDA × tipo de cambio) se le restan empaque, transporte y aduanas y se le suma la venta de merma;
+      lo que queda se divide entre los kilos de fruta que necesita un camión (rendimiento ${fmt(c.rend, 0)} % este mes). Todo eso son datos firmes.
+      El SNIIM es el precio público del limón persa de Veracruz en central de abasto (Secretaría de Economía): una referencia del mercado, no lo que pagamos exactamente.</div>`;
   document.getElementById("pulso").innerHTML =
     tarjeta("Precio de venta / caja", peso(venta), `${fmt(p.usd)} USD · FOB McAllen`) +
-    tarjeta("Costo puesto McAllen", peso(costo), `${peso(costo * cajas)} por camión`) +
-    tarjeta("Margen bruto / caja", peso(margen), `<span class="chip">${(pct * 100).toFixed(1)}% sobre venta</span>`, cls) +
-    tarjeta("Utilidad bruta / camión", peso(margen * cajas), `${fmt(cajas, 0)} cajas`, cls);
+    tarjeta("Costo puesto McAllen (estimado)", peso(costo), `fruta a precio SNIIM · ${peso(costo * cajas)} por camión`) +
+    tarjeta("Margen bruto / caja (estimado)", peso(margen), `<span class="chip">${(pct * 100).toFixed(1)}% sobre venta</span>`, cls) +
+    tarjeta("Utilidad bruta / camión (estimada)", peso(margen * cajas), `${fmt(cajas, 0)} cajas`, cls);
   const vol = cajas * c.camiones;
   document.getElementById("semana-sub").textContent = `Suponiendo ${fmt(c.camiones, 0)} camiones de ${fmt(cajas, 0)} cajas cada uno`;
   document.getElementById("semana").innerHTML =
@@ -483,18 +501,23 @@ function resultados() {
 }
 
 function gOrigen() {
-  const el = document.getElementById("g-origen");
-  if (!D.origen || !el || el.offsetParent === null) return;  // solo si la pestaña está visible
-  const col = { jalapa: css("--series-1"), iztapalapa: css("--series-2") };
-  const trazas = Object.entries(D.origen).map(([k, r]) => linea(r.serie.x, r.serie.y, r.nombre, col[k], { hovertemplate: "%{y:,.2f}" }));
+  const el = document.getElementById("g-origen"), h = D.holgura_hist;
+  if (!h || !el || el.offsetParent === null) return;  // solo si la pestaña está visible
+  document.getElementById("holgura-sub").textContent =
+    `Promedio semanal, MXN/kg · desde ${h.desde}, hubo holgura en ${h.semanas_con_holgura}% de las semanas`;
+  const trazas = [
+    linea(h.x, h.max, "Precio máximo pagable", css("--series-1"), { hovertemplate: "%{y:,.2f}" }),
+    linea(h.x, h.sniim, "SNIIM (referencia de la fruta)", css("--series-2"), { hovertemplate: "%{y:,.2f}" }),
+  ];
   const L = tema();
   L.yaxis.title = { text: "MXN por kg", font: { size: 12 } }; L.yaxis.tickformat = ",.0f";
   L.xaxis.type = "date"; L.xaxis.hoverformat = "Semana al %d %b %Y";
-  const fin = new Date(), ini = new Date(); ini.setFullYear(fin.getFullYear() - 3);
+  const fin = new Date(h.x.at(-1)), ini = new Date(fin); ini.setFullYear(fin.getFullYear() - 3);
   L.xaxis.range = [ini.toISOString().slice(0, 10), fin.toISOString().slice(0, 10)];
-  const desde = L.xaxis.range[0];  // eje Y según el periodo visible (hay picos viejos muy altos)
-  const max = Math.max(...Object.values(D.origen).flatMap(r => r.serie.x.map((x, i) => x >= desde ? r.serie.y[i] : null)).filter(v => v != null));
-  L.yaxis.range = [0, Math.ceil(max * 1.1)];
+  const desde = L.xaxis.range[0];  // eje Y según el periodo visible
+  const vis = h.x.flatMap((x, i) => x >= desde ? [h.max[i], h.sniim[i]] : []).filter(v => v != null);
+  L.yaxis.range = [Math.min(0, Math.floor(Math.min(...vis) * 1.1)), Math.ceil(Math.max(...vis) * 1.1)];
+  L.yaxis.zeroline = true; L.yaxis.zerolinecolor = css("--text-muted");
   Plotly.react(el, trazas, L, cfg);
 }
 
