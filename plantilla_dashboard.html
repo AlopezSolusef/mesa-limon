@@ -95,6 +95,13 @@ td.pos { color: var(--up); font-weight: 600; } td.neg { color: var(--down); font
 .tabs button[aria-selected="true"] { color: var(--text-primary); border-bottom-color: var(--series-1); font-weight: 600; }
 .calc .aviso { margin-top: 0; }
 #tab-costos .aviso { margin: 10px 0 4px; }
+.pulso { grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); margin-bottom: 0; }
+.pulso .kpi { padding: 12px 14px; }
+#semana { grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); }
+.pulso .val { font-size: 24px; }
+.pulso .val.pos { color: var(--up); } .pulso .val.neg { color: var(--down); }
+.chip { display: inline-block; font-size: 11px; font-weight: 600; padding: 1px 8px; border-radius: 10px; background: var(--grid); color: var(--text-secondary); }
+tr.total td { font-weight: 600; border-top: 1px solid var(--text-muted); }
 footer { color: var(--text-muted); font-size: 12px; margin-top: 24px; }
 </style>
 </head>
@@ -110,7 +117,7 @@ footer { color: var(--text-muted); font-size: 12px; margin-top: 24px; }
 
   <nav class="tabs" role="tablist">
     <button role="tab" data-tab="mercado" aria-selected="true">Mercado</button>
-    <button role="tab" data-tab="costos" aria-selected="false">Costos y márgenes</button>
+    <button role="tab" data-tab="costos" aria-selected="false">Pulso McAllen</button>
   </nav>
 
   <div id="tab-mercado" role="tabpanel">
@@ -186,18 +193,22 @@ footer { color: var(--text-muted); font-size: 12px; margin-top: 24px; }
 
   <div id="tab-costos" role="tabpanel" hidden>
   <section class="card" style="padding-bottom:16px">
-    <h2>¿Cuánto nos cuesta poner el limón en cada punto y cuánto dejaría?</h2>
-    <div class="sub">Compara nuestro costo puesto contra el precio de mercado de hoy en McAllen, Los Ángeles y Nueva York.
-      Responde dos preguntas: <b>¿en qué punto conviene vender?</b> y <b>¿cuánto es lo máximo que podemos pagar en origen sin perder?</b></div>
-    <div class="aviso">⚠ <b>Los costos iniciales son supuestos de ejemplo, no costos reales.</b> Los márgenes solo son útiles con los costos de Oscar (maquila) y fletes cotizados.
-      Lo que captures se guarda solo en este navegador; no se publica.</div>
+    <h2>Pulso diario · McAllen</h2>
+    <div class="sub" id="pulso-sub"></div>
+    <div class="aviso">⚠ <b>Los costos son supuestos de ejemplo, no costos reales.</b> El precio de venta sí es real (USDA + Banxico, se actualiza solo).
+      Con la maquila de Oscar y los fletes cotizados, las cifras quedan reales. Lo que captures se guarda solo en este navegador; no se publica.</div>
     <div class="calc">
       <div class="campos" id="campos"></div>
       <div>
-        <div class="tabla-wrap"><table id="tabla-costos"></table></div>
-        <div class="nota">Costo puesto = fruta (compra en origen ÷ aprovechamiento) + maquila y empaque + flete a McAllen + cruce, más el flete a LA o NY.
-          Precio de mercado: USDA (FOB McAllen y mercados de mayoreo de LA y NY), último reporte. Margen = precio × (1 − comisión) − costo puesto.
-          Compra máx. = lo más que se puede pagar en origen sin perder, con los demás costos fijos.</div>
+        <div class="kpis pulso" id="pulso"></div>
+        <h2 style="margin-top:14px">Proyección semanal</h2>
+        <div class="sub" id="semana-sub"></div>
+        <div class="kpis pulso" id="semana"></div>
+        <h2 style="margin-top:14px">Desglose del costo puesto por caja</h2>
+        <div class="tabla-wrap"><table id="desglose"></table></div>
+        <div class="nota">Precio de venta = FOB McAllen de USDA (promedio de calibres 110s–250s, caja de 40 lb) × FIX de Banxico del día.
+          Fruta por caja = compra en origen × 18.14 kg ÷ aprovechamiento. Margen = venta × (1 − comisión) − costo puesto.
+          Compra máxima = lo más que se puede pagar por kilo en origen sin perder, con los demás costos fijos.</div>
       </div>
     </div>
   </section>
@@ -350,22 +361,23 @@ function insights() {
 }
 
 const SUPUESTOS = {  // valores de ejemplo; se reemplazan con costos reales
-  origen: 15.5, aprov: 80, maquila: 4.0, flete_mx: 1.8, cruce: 0.8, flete_la: 3.5, flete_ny: 4.5, comision: 0, tier: "Estándar" };
-const CAMPOS = [
-  ["origen", "Compra en origen", "MXN por kg, en huerta"],
-  ["aprov", "Aprovechamiento", "% de la fruta que sale como exportación"],
-  ["maquila", "Maquila y empaque", "USD por caja (incluye caja y tarima)"],
-  ["flete_mx", "Flete Mtz. de la Torre → McAllen", "USD por caja"],
-  ["cruce", "Cruce, agente e inspección", "USD por caja"],
-  ["flete_la", "Flete McAllen → Los Ángeles", "USD por caja"],
-  ["flete_ny", "Flete McAllen → Nueva York", "USD por caja"],
-  ["comision", "Comisión del distribuidor", "% del precio de venta"],
+  origen: 15.5, aprov: 80, maquila: 70, flete: 35000, cruce: 15000, comision: 0,
+  cajas: 1080, camiones: 3, tier: "Estándar" };
+const CAMPOS = [  // [clave, nombre, unidad, paso]
+  ["origen", "Compra en origen", "MXN por kg, en huerta", 0.5],
+  ["aprov", "Aprovechamiento", "% de la fruta que sale como exportación", 1],
+  ["maquila", "Maquila y empaque", "MXN por caja (incluye caja y tarima)", 1],
+  ["flete", "Flete Mtz. de la Torre → McAllen", "MXN por camión", 500],
+  ["cruce", "Cruce, agente e inspección", "MXN por camión", 500],
+  ["comision", "Comisión del distribuidor", "% del precio de venta", 0.5],
+  ["cajas", "Cajas por camión", "cajas de 40 lb", 10],
+  ["camiones", "Camiones por semana", "para la proyección", 1],
 ];
 function leerCostos() {
-  try { return { ...SUPUESTOS, ...JSON.parse(localStorage.getItem("costos-limon") || "{}") }; }
+  try { return { ...SUPUESTOS, ...JSON.parse(localStorage.getItem("costos-mcallen") || "{}") }; }
   catch (e) { return { ...SUPUESTOS }; }
 }
-function guardarCostos(c) { try { localStorage.setItem("costos-limon", JSON.stringify(c)); } catch (e) {} }
+function guardarCostos(c) { try { localStorage.setItem("costos-mcallen", JSON.stringify(c)); } catch (e) {} }
 let costos = leerCostos();
 
 function flujo() {
@@ -378,11 +390,13 @@ function flujo() {
     paso("Retail (HEB y similares)", "Pendiente", "USDA no lo publica por API; fuente por definir", true);
 }
 
+const peso = (v, d = 0) => (v < 0 ? "−$" : "$") + fmt(Math.abs(v), d);
+
 function calculadora() {
   const tiers = ["Estándar", "Fine", "Fair"];
-  document.getElementById("campos").innerHTML = CAMPOS.map(([k, l, d]) =>
-    `<label><span>${l}<small>${d}</small></span><input type="number" step="0.1" min="0" data-k="${k}" value="${costos[k]}"></label>`).join("") +
-    `<label><span>Calidad para el precio de mercado<small>nivel de apariencia USDA</small></span><select data-k="tier">${tiers.map(t =>
+  document.getElementById("campos").innerHTML = CAMPOS.map(([k, l, d, paso]) =>
+    `<label><span>${l}<small>${d}</small></span><input type="number" step="${paso}" min="0" data-k="${k}" value="${costos[k]}"></label>`).join("") +
+    `<label><span>Calidad del precio de venta<small>nivel de apariencia USDA</small></span><select data-k="tier">${tiers.map(t =>
       `<option${t === costos.tier ? " selected" : ""}>${t}</option>`).join("")}</select></label>
      <button class="btn" id="reset">Volver a los supuestos de ejemplo</button>`;
   document.querySelectorAll("#campos [data-k]").forEach(el => el.addEventListener("input", () => {
@@ -396,25 +410,42 @@ function calculadora() {
 }
 
 function resultados() {
-  const c = costos, fx = D.kpi.fx, kg = D.tabla.kg, u = D.cadena.ultimo;
-  const fruta = c.origen * kg / Math.max(c.aprov, 1) * 100 / fx;          // USD por caja
-  const mcallen = fruta + c.maquila + c.flete_mx + c.cruce;
-  const puntos = [["McAllen (FOB)", mcallen, 0], ["Mayoreo Los Ángeles", mcallen + c.flete_la, c.flete_la],
-                  ["Mayoreo Nueva York", mcallen + c.flete_ny, c.flete_ny]];
-  const filas = puntos.map(([n, costo, fleteExtra]) => {
-    const p = u[n] && (u[n][c.tier] || u[n]["Estándar"]);
-    if (!p) return `<tr><td>${n}</td><td>${fmt(costo)}</td><td colspan="4">sin precio reciente</td></tr>`;
-    const neto = p.usd * (1 - c.comision / 100), margen = neto - costo;
-    const noFruta = c.maquila + c.flete_mx + c.cruce + fleteExtra;
-    const maxOrigen = (neto - noFruta) * fx * (c.aprov / 100) / kg;
-    const cls = margen >= 0 ? "pos" : "neg";
-    return `<tr><td>${n}${u[n][c.tier] ? "" : ' <span class="nota">(Estándar)</span>'}</td><td>${fmt(costo)}</td><td>${fmt(p.usd)}</td>
-      <td class="${cls}">${margen >= 0 ? "+" : ""}${fmt(margen)}</td><td class="${cls}">${margen >= 0 ? "+" : ""}${fmt(margen * fx / kg)}</td>
-      <td>${fmt(maxOrigen)}</td></tr>`;
-  }).join("");
-  document.getElementById("tabla-costos").innerHTML =
-    `<tr><th>Punto</th><th>Costo puesto<br>USD/caja</th><th>Precio mercado<br>USD/caja</th><th>Margen<br>USD/caja</th><th>Margen<br>MXN/kg</th><th>Compra máx.<br>MXN/kg</th></tr>` + filas +
-    `<tr><td colspan="6" class="nota" style="text-align:left">Fruta: ${fmt(fruta)} USD/caja (${fmt(c.origen)} MXN/kg × ${fmt(kg)} kg ÷ ${fmt(c.aprov, 0)} % ÷ FIX ${fmt(fx, 4)})</td></tr>`;
+  const c = costos, fx = D.kpi.fx, kg = D.tabla.kg, cajas = Math.max(c.cajas, 1);
+  const m = D.cadena.ultimo["McAllen (FOB)"] || {};
+  const p = m[c.tier] || m["Estándar"];
+  if (!p) { document.getElementById("pulso").innerHTML = "<div class='nota'>Sin precio reciente de USDA.</div>"; return; }
+  const venta = p.usd * fx;                                   // MXN por caja
+  const conceptos = [
+    ["Fruta", c.origen * kg / Math.max(c.aprov, 1) * 100, `${fmt(c.origen)} MXN/kg × ${fmt(kg)} kg ÷ ${fmt(c.aprov, 0)} %`],
+    ["Maquila y empaque", c.maquila, "por caja"],
+    ["Flete a McAllen", c.flete / cajas, `${peso(c.flete)} ÷ ${fmt(cajas, 0)} cajas`],
+    ["Cruce, agente e inspección", c.cruce / cajas, `${peso(c.cruce)} ÷ ${fmt(cajas, 0)} cajas`],
+  ];
+  const costo = conceptos.reduce((a, x) => a + x[1], 0);
+  const neta = venta * (1 - c.comision / 100), margen = neta - costo;
+  const pct = venta ? margen / venta : 0, cls = margen >= 0 ? "pos" : "neg";
+  const maxOrigen = (neta - costo + conceptos[0][1]) * (c.aprov / 100) / kg;
+  const tarjeta = (lbl, val, det, clase = "") => `<div class="kpi"><div class="lbl">${lbl}</div><div class="val ${clase}">${val}</div><div class="det">${det}</div></div>`;
+
+  document.getElementById("pulso-sub").textContent =
+    `Pesos por caja de 40 lb · precio FOB McAllen del ${p.fecha} (${m[c.tier] ? c.tier : "Estándar"}): ${fmt(p.usd)} USD × FIX ${fmt(fx, 4)}`;
+  document.getElementById("pulso").innerHTML =
+    tarjeta("Precio de venta / caja", peso(venta), `${fmt(p.usd)} USD · FOB McAllen`) +
+    tarjeta("Costo puesto McAllen", peso(costo), `${fmt(costo / kg, 2)} MXN/kg`) +
+    tarjeta("Margen bruto / caja", peso(margen), `<span class="chip">${(pct * 100).toFixed(1)}% sobre venta</span>`, cls) +
+    tarjeta("Utilidad bruta / camión", peso(margen * cajas), `${fmt(cajas, 0)} cajas`, cls);
+  const vol = cajas * c.camiones;
+  document.getElementById("semana-sub").textContent = `Suponiendo ${fmt(c.camiones, 0)} camiones de ${fmt(cajas, 0)} cajas cada uno`;
+  document.getElementById("semana").innerHTML =
+    tarjeta("Volumen", fmt(vol, 0), "cajas") +
+    tarjeta("Ventas", peso(neta * vol), "MXN, neto de comisión") +
+    tarjeta("Utilidad bruta", peso(margen * vol), "MXN", cls);
+  document.getElementById("desglose").innerHTML =
+    `<tr><th>Concepto</th><th>MXN / caja</th><th>% del costo</th><th>Cálculo</th></tr>` +
+    conceptos.map(([n, v, calc]) => `<tr><td>${n}</td><td>${fmt(v, 2)}</td><td>${fmt(costo ? v / costo * 100 : 0, 0)}%</td><td class="nota" style="text-align:left">${calc}</td></tr>`).join("") +
+    `<tr class="total"><td>Costo puesto McAllen</td><td>${fmt(costo, 2)}</td><td>100%</td><td></td></tr>` +
+    `<tr><td>Compra máxima en origen</td><td colspan="3" style="text-align:left"><b>${fmt(maxOrigen, 2)} MXN/kg</b>
+      <span class="nota">· hoy capturado: ${fmt(c.origen, 2)} MXN/kg</span></td></tr>`;
 }
 
 function gCadena() {
