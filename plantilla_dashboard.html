@@ -109,6 +109,17 @@ tr.total td { font-weight: 600; border-top: 1px solid var(--text-muted); }
 .holgura .frase { font-size: 15px; }
 .holgura .como { color: var(--text-muted); font-size: 12px; margin-top: 8px; }
 .pulso-card { max-width: 860px; margin: 0 auto 16px; padding: 20px 22px; }
+/* Pulso: mismo formato que el correo (fondo liso, tarjetas solo para holgura e indicadores, listas para lo demás) */
+.pulso-plano { max-width: 680px; margin: 0 auto 20px; }
+.pulso-plano .holgura { margin: 12px 0 8px; }
+.pulso-plano h3 { font-size: 15px; margin: 18px 0 2px; }
+.p-2x2 { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+@media (max-width: 480px) { .p-2x2 { grid-template-columns: 1fr; } }
+table.lista { margin: 6px 0 0; font-size: 14px; }
+table.lista td { border: 0; padding: 5px 0; color: var(--text-secondary); }
+table.lista td:last-child { color: var(--text-primary); text-align: right; font-variant-numeric: tabular-nums; }
+table.lista tr.total td { color: var(--text-primary); font-weight: 700; border-top: 1px solid var(--text-muted); }
+table.lista td.pos { color: var(--up); font-weight: 700; } table.lista td.neg { color: var(--down); font-weight: 700; }
 .pulso-titulo { font-size: 22px; font-weight: 700; letter-spacing: -.01em; }
 details.mas { border-top: 1px solid var(--border); margin-top: 16px; padding-top: 10px; }
 details.mas summary { cursor: pointer; color: var(--text-secondary); font-size: 13px; font-weight: 600; }
@@ -137,19 +148,21 @@ footer { color: var(--text-muted); font-size: 12px; margin-top: 24px; }
   </nav>
 
   <div id="tab-pulso" role="tabpanel">
-  <section class="card pulso-card">
+  <section class="pulso-plano">
     <div class="pulso-titulo" id="p-titulo">Pulso McAllen</div>
     <div class="sub" id="p-sub"></div>
     <div class="holgura" id="p-holgura"></div>
-    <div class="kpis pulso" id="p-tarjetas"></div>
-    <h2 style="margin-top:16px">Proyección semanal</h2>
+    <div class="kpis pulso p-2x2" id="p-tarjetas"></div>
+    <h3>Proyección semanal</h3>
     <div class="sub" id="p-semana-sub"></div>
-    <div class="kpis pulso" id="p-semana"></div>
-    <h2 style="margin-top:16px">Costo puesto por caja (MXN)</h2>
-    <div class="tabla-wrap"><table id="p-desglose"></table></div>
-    <h2 style="margin-top:16px">Lo relevante del mercado</h2>
+    <table class="lista" id="p-semana"></table>
+    <h3>Costo puesto por caja (MXN)</h3>
+    <table class="lista" id="p-desglose"></table>
+    <h3>Lo relevante del mercado</h3>
     <ul class="p-insights" id="p-insights"></ul>
-    <h2 style="margin-top:16px">Holgura histórica: cuánto se podía pagar vs. SNIIM</h2>
+  </section>
+  <section class="card pulso-card" style="max-width:680px">
+    <h2>Holgura histórica: cuánto se podía pagar vs. SNIIM</h2>
     <div class="sub" id="holgura-sub"></div>
     <div id="g-origen" class="chart sm"></div>
     <div class="nota">Cuando la línea de precio máximo está arriba del SNIIM, había holgura. Usa los costos de hoy en todas las semanas
@@ -629,9 +642,9 @@ function pulsoEjecutivo() {
     tarjeta("Utilidad / camión (est.)", peso(p.utilidad_camion), `${fmt(p.cajas, 0)} cajas`, cls);
   document.getElementById("p-semana-sub").textContent = `${fmt(p.camiones, 0)} camiones de ${fmt(p.cajas, 0)} cajas`;
   document.getElementById("p-semana").innerHTML =
-    tarjeta("Volumen", fmt(p.semana_cajas, 0), "cajas") +
-    tarjeta("Ventas", peso(p.semana_ventas), "MXN") +
-    tarjeta("Utilidad bruta (est.)", peso(p.semana_utilidad), "MXN", cls);
+    `<tr><td>Volumen</td><td>${fmt(p.semana_cajas, 0)} cajas</td></tr>` +
+    `<tr><td>Ventas</td><td>${peso(p.semana_ventas)}</td></tr>` +
+    `<tr><td>Utilidad bruta (est.)</td><td class="${cls}">${peso(p.semana_utilidad)}</td></tr>`;
   document.getElementById("p-desglose").innerHTML =
     p.conceptos.map(([n, v]) => `<tr><td>${n}</td><td>${fmt(v, 2)}</td></tr>`).join("") +
     `<tr class="total"><td>Total</td><td>${fmt(p.costo, 2)}</td></tr>` +
