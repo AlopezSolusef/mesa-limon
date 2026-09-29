@@ -27,6 +27,7 @@ load_dotenv(AQUI / ".env")
 URL_DASHBOARD = "https://alopezsolusef.github.io/mesa-limon/"
 HOY = datetime.now(timezone(timedelta(hours=-6)))  # hora CDMX
 
+MARCA, MARCA_F = "#2e7d32", "#1b5e20"  # verde Ele Foods (estructura); los positivos van en negro, lo negativo en rojo
 TINTA, SEC, MUTED, BORDE, FONDO, VERDE, ROJO, AZUL = (
     "#0b0b0b", "#52514e", "#7a7974", "#e3e2de", "#f4f3f0", "#1f7a3d", "#b3261e", "#2a78d6")
 
@@ -84,11 +85,11 @@ def tarjeta(etiqueta, valor, detalle, color=TINTA):
 
 def armar(d, src_grafica="cid:holgura"):
     p, costos = d["pulso"], d["costos"]
-    color = VERDE if p["margen"] >= 0 else ROJO
+    color = TINTA if p["margen"] >= 0 else ROJO
     fecha_hoy = HOY.strftime("%d/%m/%Y")
     h = p["holgura"]
     signo_h = "+" if h >= 0 else "−"
-    color_h = VERDE if h >= 0 else ROJO
+    color_h = TINTA if h >= 0 else ROJO
     ctx = p.get("contexto", {})
     aviso = {"sin": "⚠️ Sin holgura · ", "baja": "⚠️ Holgura baja · "}.get(ctx.get("semaforo"), "")
     asunto = f"{aviso}Pulso McAllen · {fecha_hoy} · holgura {signo_h}${abs(h):.2f}/kg · margen est. {peso(p['margen'])}/caja"
@@ -96,7 +97,7 @@ def armar(d, src_grafica="cid:holgura"):
     def cambio(v, etiqueta):  # ▲ $0.29 vs. el 25/09
         if v is None:
             return ""
-        flecha, col = ("▲", VERDE) if v > 0.005 else ("▼", ROJO) if v < -0.005 else ("=", SEC)
+        flecha, col = ("▲", TINTA) if v > 0.005 else ("▼", ROJO) if v < -0.005 else ("=", SEC)
         return f"<span style='color:{col}'>{flecha} ${abs(v):.2f}</span> {etiqueta}"
     partes = [cambio(ctx.get("vs_ayer"), f"vs. el {ctx.get('fecha_ayer', '')}"),
               cambio(ctx.get("vs_semana"), "vs. hace una semana")]
@@ -113,7 +114,7 @@ def armar(d, src_grafica="cid:holgura"):
         for n, v in p["conceptos"])
     hh = d.get("holgura_hist")
     grafica = "" if not (hh and src_grafica) else f"""<tr><td style="padding:14px 6px 0">
-    <div style="font-size:14px;font-weight:700">Holgura histórica (últimos 2 años)</div>
+    <div style="font-size:14px;font-weight:700;border-left:3px solid {MARCA};padding-left:8px">Holgura histórica (últimos 2 años)</div>
     <div style="font-size:12px;color:{SEC};margin:2px 0 6px">Cuánto se podía pagar por la fruta cada semana vs. lo que marcaba el SNIIM ·
       desde {hh['desde']}, hubo holgura en {hh['semanas_con_holgura']}% de las semanas</div>
     <img src="{src_grafica}" width="588" alt="Gráfica de holgura histórica" style="width:100%;max-width:588px;height:auto;border:1px solid {BORDE};border-radius:8px;display:block">
@@ -127,11 +128,14 @@ def armar(d, src_grafica="cid:holgura"):
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:{FONDO}"><tr><td align="center" style="padding:20px 10px">
 <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%">
   <tr><td style="padding:0 6px 10px">
-    <div style="font-size:20px;font-weight:700">Pulso McAllen · {fecha_hoy}</div>
-    <div style="font-size:12px;color:{SEC};margin-top:4px">Pesos por caja de 40 lb, con precios del último cierre. {fuentes}.</div>
+    <div style="background:{MARCA_F};border-radius:10px;padding:14px 18px">
+      <div style="font-size:12px;color:#d7e9d5;letter-spacing:.02em">ELE FOODS · MESA DEL LIMÓN PERSA</div>
+      <div style="font-size:20px;font-weight:700;color:#ffffff;margin-top:2px">Pulso McAllen · {fecha_hoy}</div>
+    </div>
+    <div style="font-size:12px;color:{SEC};margin-top:8px">Pesos por caja de 40 lb, con precios del último cierre. {fuentes}.</div>
   </td></tr>
   <tr><td style="padding:6px">
-    <div style="border:1px solid {BORDE};border-radius:10px;padding:14px 16px;background:#ffffff">
+    <div style="border:1px solid {BORDE};border-left:5px solid {MARCA};border-radius:10px;padding:14px 16px;background:#ffffff">
       {alerta_html}<div style="font-size:13px;color:{SEC}">Holgura de hoy</div>
       <div style="font-size:32px;font-weight:700;color:{color_h}">{signo_h}${abs(h):,.2f}/kg</div>
       <div style="font-size:15px">Hoy podemos pagar hasta <b>${p['precio_max_fruta']:,.2f}/kg</b> por la fruta sin perder.
@@ -148,7 +152,7 @@ def armar(d, src_grafica="cid:holgura"):
         {tarjeta("Utilidad / camión (est.)", peso(p['utilidad_camion']), f"{p['cajas']:,} cajas", color)}</tr>
   </table></td></tr>
   <tr><td style="padding:10px 6px 0">
-    <div style="font-size:14px;font-weight:700">Proyección semanal</div>
+    <div style="font-size:14px;font-weight:700;border-left:3px solid {MARCA};padding-left:8px">Proyección semanal</div>
     <div style="font-size:12px;color:{SEC};margin:2px 0 6px">{p['camiones']} camiones de {p['cajas']:,} cajas</div>
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font-size:14px">
       <tr><td style="color:{SEC}">Volumen</td><td style="text-align:right">{p['semana_cajas']:,} cajas</td></tr>
@@ -157,7 +161,7 @@ def armar(d, src_grafica="cid:holgura"):
     </table>
   </td></tr>
   <tr><td style="padding:14px 6px 0">
-    <div style="font-size:14px;font-weight:700;margin-bottom:4px">Costo puesto por caja (MXN)</div>
+    <div style="font-size:14px;font-weight:700;margin-bottom:4px;border-left:3px solid {MARCA};padding-left:8px">Costo puesto por caja (MXN)</div>
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font-size:14px">{desglose}
       <tr><td style="padding:4px 0;font-weight:700;border-top:1px solid {MUTED}">Total</td>
           <td style="padding:4px 0;text-align:right;font-weight:700;border-top:1px solid {MUTED}">{p['costo']:,.2f}</td></tr>
@@ -166,12 +170,12 @@ def armar(d, src_grafica="cid:holgura"):
     </table>
   </td></tr>
   <tr><td style="padding:14px 6px 0">
-    <div style="font-size:14px;font-weight:700;margin-bottom:6px">Lo relevante del mercado</div>
+    <div style="font-size:14px;font-weight:700;margin-bottom:6px;border-left:3px solid {MARCA};padding-left:8px">Lo relevante del mercado</div>
     <ul style="margin:0;padding-left:18px;font-size:13px;line-height:1.45">{insights}</ul>
   </td></tr>
   {grafica}
   <tr><td align="center" style="padding:18px 6px">
-    <a href="{URL_DASHBOARD}" style="background:{AZUL};color:#ffffff;text-decoration:none;padding:10px 20px;border-radius:6px;font-size:14px;font-weight:600;display:inline-block">Abrir dashboard</a>
+    <a href="{URL_DASHBOARD}" style="background:{MARCA_F};color:#ffffff;text-decoration:none;padding:10px 20px;border-radius:6px;font-size:14px;font-weight:600;display:inline-block">Abrir dashboard</a>
   </td></tr>
   <tr><td style="padding:0 6px;font-size:11px;color:{MUTED}">
     Costos: {escape(costos['fuente'])}. Por confirmar: {escape(costos['por_confirmar'])}.
