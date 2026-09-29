@@ -112,6 +112,11 @@ def armar(d, src_grafica="cid:holgura"):
     desglose = "".join(
         f"<tr><td style='padding:4px 0;color:{SEC}'>{escape(n)}</td><td style='padding:4px 0;text-align:right'>{v:,.2f}</td></tr>"
         for n, v in p["conceptos"])
+    com = p.get("comision_pct", 0)
+    venta_det = (f"{p['usd_caja']:.2f} USD · {peso(p['venta'] - p['comision_caja'])} neto de comisión {com:g}%" if com
+                 else f"{p['usd_caja']:.2f} USD · FOB McAllen")
+    comision_fila = (f"<tr><td style='padding:6px 0 0;color:{SEC}'>Comisión del broker ({com:g}% de la venta)</td>"
+                     f"<td style='padding:6px 0 0;text-align:right'>{p['comision_caja']:,.2f}</td></tr>") if com else ""
     hh = d.get("holgura_hist")
     grafica = "" if not (hh and src_grafica) else f"""<tr><td style="padding:14px 6px 0">
     <div style="font-size:14px;font-weight:700;border-left:3px solid {MARCA};padding-left:8px">Holgura histórica (últimos 2 años)</div>
@@ -146,7 +151,7 @@ def armar(d, src_grafica="cid:holgura"):
         una referencia, no lo que pagamos exactamente. Por eso el costo y el margen de abajo son estimados.</div>
     </div></td></tr>
   <tr><td><table role="presentation" width="100%" cellpadding="0" cellspacing="0">
-    <tr>{tarjeta("Precio de venta / caja", peso(p['venta']), f"{p['usd_caja']:.2f} USD · FOB McAllen")}
+    <tr>{tarjeta("Precio de venta / caja", peso(p['venta']), venta_det)}
         {tarjeta("Costo puesto (estimado)", peso(p['costo']), f"{peso(p['costo'] * p['cajas'])} por camión")}</tr>
     <tr>{tarjeta("Margen bruto / caja (est.)", peso(p['margen']), f"{p['pct']:.1%} sobre venta", color)}
         {tarjeta("Utilidad / camión (est.)", peso(p['utilidad_camion']), f"{p['cajas']:,} cajas", color)}</tr>
@@ -165,6 +170,7 @@ def armar(d, src_grafica="cid:holgura"):
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font-size:14px">{desglose}
       <tr><td style="padding:4px 0;font-weight:700;border-top:1px solid {MUTED}">Total</td>
           <td style="padding:4px 0;text-align:right;font-weight:700;border-top:1px solid {MUTED}">{p['costo']:,.2f}</td></tr>
+      {comision_fila}
       <tr><td style="padding:6px 0 0;color:{SEC}">Precio máximo de la fruta sin perder</td>
           <td style="padding:6px 0 0;text-align:right">{p['precio_max_fruta']:.2f} MXN/kg</td></tr>
     </table>

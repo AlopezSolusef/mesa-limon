@@ -31,7 +31,8 @@
   "aduanas": [
     ["Aduanas México y EE. UU. (aprox.)", 5000]
   ],
-  "comision_pct": 0,
+  "comision_pct": 10,
+  "_comision": "Comisión del broker en McAllen: 10% sobre el precio de venta total (César, 29/09/2026).",
   "camiones_por_semana": 3,
   "alerta_holgura_kg": 2,
   "_alerta": "Si la holgura baja de este valor (MXN/kg), el correo avisa con ⚠️ en el asunto."

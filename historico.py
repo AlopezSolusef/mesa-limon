@@ -588,6 +588,7 @@ def calcular_pulso(cadena, origen, costos, fx, tier="Estándar"):
         "fecha_usda": p["fecha"], "usd_caja": p["usd"], "fx": fx, "tier": tier if m.get(tier) else "Estándar",
         "precio_fruta_kg": precio_kg, "fuente_fruta": fuente_fruta,
         "venta": venta, "costo": costo, "margen": margen, "pct": margen / venta if venta else 0,
+        "comision_pct": costos["comision_pct"], "comision_caja": venta - neta,
         "utilidad_camion": margen * cajas, "cajas": cajas, "camiones": costos["camiones_por_semana"],
         "semana_cajas": semanal, "semana_ventas": neta * semanal, "semana_utilidad": margen * semanal,
         "conceptos": conceptos,

@@ -642,7 +642,9 @@ function pulsoEjecutivo() {
       (rendimiento ${fmt(p.rendimiento, 0)} %). El SNIIM es el precio público en central de abasto: una referencia, no lo que pagamos exactamente.
       Por eso el costo y el margen son estimados.</div>`;
   document.getElementById("p-tarjetas").innerHTML =
-    tarjeta("Precio de venta / caja", peso(p.venta), `${fmt(p.usd_caja)} USD · FOB McAllen`) +
+    tarjeta("Precio de venta / caja", peso(p.venta), p.comision_pct
+      ? `${fmt(p.usd_caja)} USD · ${peso(p.venta - p.comision_caja)} neto de comisión ${fmt(p.comision_pct, 0)}%`
+      : `${fmt(p.usd_caja)} USD · FOB McAllen`) +
     tarjeta("Costo puesto (est.)", peso(p.costo), `${peso(p.costo * p.cajas)} por camión`) +
     tarjeta("Margen bruto / caja (est.)", peso(p.margen), `<span class="chip">${(p.pct * 100).toFixed(1)}% sobre venta</span>`, cls) +
     tarjeta("Utilidad / camión (est.)", peso(p.utilidad_camion), `${fmt(p.cajas, 0)} cajas`, cls);
@@ -654,6 +656,7 @@ function pulsoEjecutivo() {
   document.getElementById("p-desglose").innerHTML =
     p.conceptos.map(([n, v]) => `<tr><td>${n}</td><td>${fmt(v, 2)}</td></tr>`).join("") +
     `<tr class="total"><td>Total</td><td>${fmt(p.costo, 2)}</td></tr>` +
+    (p.comision_pct ? `<tr><td>Comisión del broker (${fmt(p.comision_pct, 0)}% de la venta)</td><td>${fmt(p.comision_caja, 2)}</td></tr>` : "") +
     `<tr><td>Precio máximo de la fruta sin perder</td><td>${fmt(p.precio_max_fruta, 2)} MXN/kg</td></tr>`;
   document.getElementById("p-insights").innerHTML = D.insights.slice(0, 3)
     .map(i => `<li><b>${i.titulo}.</b> <span>${i.texto}</span></li>`).join("");
