@@ -442,6 +442,7 @@ def construir(usda, fx, ct, espejo, census=None, terminales=None, sniim=None):
     datos = {
         "cadena": cadena,
         "origen": resumen_sniim(sniim),
+        "costos": json.loads((AQUI / "costos.json").read_text(encoding="utf-8")),
         "insights": generar_insights(diario, sem, fx, kg, vu),
         "fob": serie_fob, "estacional": estacional, "comercio": comercio,
         "fx": (lambda w: {"x": w.index.strftime("%Y-%m-%d").tolist(),  # cierre semanal

@@ -1,0 +1,28 @@
+{
+  "_nota": "Costos por camión para el Pulso McAllen. Fuente: hoja 'Gastos Fijos' de Oscar (V-040). Montos en MXN.",
+  "fuente": "Oscar, hoja Gastos Fijos V-040 (15/09/2025)",
+  "por_confirmar": "vigencia de los montos, aduana de EE. UU. en $0 y venta de merma",
+  "cajas_por_camion": 1080,
+  "kg_fruta_por_camion": 23000,
+  "precio_fruta_oscar": 17,
+  "precio_fruta": {"fuente": "jalapa", "ajuste": 0},
+  "empaque": [
+    ["Cartón", 1080, 31.28],
+    ["Maquila", 1080, 14],
+    ["Tarimas", 18, 200],
+    ["Esquineros", 72, 14],
+    ["Certificado", 1, 1650],
+    ["Sello", 1, 100],
+    ["Personal", 2, 1000],
+    ["Seguro", 1, 3000],
+    ["Facturación", 1, 6000],
+    ["Termógrafo", 1, 460]
+  ],
+  "transporte": 40000,
+  "aduanas": [
+    ["Aduana México", 2550],
+    ["Aduana EE. UU.", 0]
+  ],
+  "comision_pct": 0,
+  "camiones_por_semana": 3
+}
