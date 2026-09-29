@@ -38,6 +38,9 @@ USDA_SLUG, USDA_DISTRITO = "2402", "MEXICO CROSSINGS THROUGH TEXAS"
 # Banxico: FIX USD/MXN y EUR/MXN
 # Mayoreo (mercados terminales) de limón mexicano: precio "puesto" en California y Nueva York
 TERMINALES = {"la": ("2306", "Los Ángeles"), "ny": ("2314", "Nueva York")}
+# SNIIM (Secretaría de Economía): limón sin semilla de primera, origen Veracruz, precio por kg en centrales de abasto.
+# Referencia pública diaria para la compra en origen. Producto 426; destinos: Iztapalapa (100) y Jalapa (301).
+SNIIM_MERCADOS = {"iztapalapa": ("100", "Central de Abasto CDMX (Iztapalapa)"), "jalapa": ("301", "Central de Abasto de Jalapa")}
 BANXICO_SERIES = {"SF43718": "USD/MXN", "SF46410": "EUR/MXN"}
 # Comtrade: HS 080550 (limones y limas), exportaciones de México (484)
 EUROPA = {40, 56, 100, 191, 196, 203, 208, 233, 246, 251, 276, 300, 348, 372, 380, 428, 440, 442,
@@ -231,6 +234,62 @@ def actualizar_comtrade_espejo():
     return nuevo
 
 
+# ---------------------------------------------------------------- SNIIM (México)
+
+def sniim_consulta(destino_id, ini, fin):
+    """Filas (fecha, mín, máx, frecuente) de limón persa de primera con origen Veracruz en un mercado."""
+    import html, re
+    url = ("http://www.economia-sniim.gob.mx/NUEVO/Consultas/MercadosNacionales/PreciosDeMercado/Agricolas/"
+           "ResultadosConsultaFechaFrutasYHortalizas.aspx")
+    # la combinación origen+destino no responde; se piden todos los orígenes y se filtra Veracruz
+    r = requests.get(url, timeout=120, headers={"User-Agent": "Mozilla/5.0"}, params={
+        "fechaInicio": f"{ini:%d/%m/%Y}", "fechaFinal": f"{fin:%d/%m/%Y}", "ProductoId": "426",
+        "OrigenId": "-1", "Origen": "Todos", "DestinoId": destino_id, "Destino": "Todos",
+        "PreciosPorId": "2", "RegistrosPorPagina": "1000"})
+    r.raise_for_status()
+    filas = []
+    for tr in re.findall(r"<tr[^>]*>(.*?)</tr>", r.text, re.S):
+        c = [html.unescape(re.sub("<[^>]+>", "", x)).strip() for x in re.findall(r"<t[dh][^>]*>(.*?)</t[dh]>", tr, re.S)]
+        if len(c) == 7 and re.match(r"\d\d/\d\d/\d{4}$", c[0]) and c[2] == "Veracruz":
+            filas.append({"fecha": datetime.strptime(c[0], "%d/%m/%Y").date().isoformat(),
+                          "min": num(c[3]), "max": num(c[4]), "frec": num(c[5])})
+    return filas
+
+
+def actualizar_sniim():
+    """Precio diario del limón persa de Veracruz en centrales de abasto (MXN/kg)."""
+    salida = {}
+    for clave, (destino_id, nombre) in SNIIM_MERCADOS.items():
+        archivo = f"sniim_{clave}.csv"
+        previo = leer(archivo)
+        desde = date(INICIO, 1, 1) if previo is None else pd.to_datetime(previo["fecha"]).max().date() - timedelta(days=14)
+        filas = []
+        for y in range(desde.year, date.today().year + 1):
+            filas += sniim_consulta(destino_id, max(desde, date(y, 1, 1)), min(date.today(), date(y, 12, 31)))
+        nuevo = pd.DataFrame(filas, columns=["fecha", "min", "max", "frec"])
+        if previo is not None:
+            nuevo = pd.concat([previo[previo["fecha"] < desde.isoformat()], nuevo])
+        nuevo = nuevo.dropna(subset=["frec"]).drop_duplicates("fecha", keep="last").sort_values("fecha")
+        guardar(nuevo, archivo)
+        print(f"  SNIIM {nombre}: {len(nuevo):,} días, {nuevo['fecha'].min()} a {nuevo['fecha'].max()}")
+        salida[clave] = nuevo
+    return salida
+
+
+def resumen_sniim(sniim):
+    """Último precio de cada mercado (para el Pulso) y serie semanal (para la gráfica)."""
+    out = {}
+    for clave, df in (sniim or {}).items():
+        if df is None or not len(df):
+            continue
+        d = df.assign(fecha=pd.to_datetime(df["fecha"])).set_index("fecha")
+        u = d.iloc[-1]
+        out[clave] = {"nombre": SNIIM_MERCADOS[clave][1], "fecha": d.index[-1].strftime("%d/%m/%Y"),
+                      "frec": u["frec"], "min": u["min"], "max": u["max"],
+                      "serie": serie_con_cortes(d["frec"].resample("W-FRI").mean())}
+    return out
+
+
 # ---------------------------------------------------------------- Census (EE. UU.)
 
 def actualizar_census():
@@ -292,7 +351,7 @@ def cadena_precios(usda, terminales, fx_hoy):
     return {"series": series, "ultimo": ultimo}
 
 
-def construir(usda, fx, ct, espejo, census=None, terminales=None):
+def construir(usda, fx, ct, espejo, census=None, terminales=None, sniim=None):
     fx = fx.assign(fecha=pd.to_datetime(fx["fecha"])).sort_values("fecha")
     u = usda.assign(fecha=pd.to_datetime(usda["fecha"]))
 
@@ -382,6 +441,7 @@ def construir(usda, fx, ct, espejo, census=None, terminales=None):
 
     datos = {
         "cadena": cadena,
+        "origen": resumen_sniim(sniim),
         "insights": generar_insights(diario, sem, fx, kg, vu),
         "fob": serie_fob, "estacional": estacional, "comercio": comercio,
         "fx": (lambda w: {"x": w.index.strftime("%Y-%m-%d").tolist(),  # cierre semanal
@@ -549,7 +609,12 @@ def main():
     if census is None:
         print("  Census: sin CENSUS_KEY en .env; el precio de EE. UU. sigue saliendo de Comtrade")
     terminales = actualizar_terminales()
-    construir(usda, fx, ct, espejo, census, terminales)
+    try:
+        sniim = actualizar_sniim()
+    except Exception as e:  # si el SNIIM no responde, usa lo guardado
+        print("  SNIIM no respondió, uso lo guardado:", e)
+        sniim = {k: leer(f"sniim_{k}.csv") for k in SNIIM_MERCADOS}
+    construir(usda, fx, ct, espejo, census, terminales, sniim)
 
 
 if __name__ == "__main__":
