@@ -27,7 +27,7 @@ load_dotenv(AQUI / ".env")
 URL_DASHBOARD = "https://alopezsolusef.github.io/mesa-limon/"
 HOY = datetime.now(timezone(timedelta(hours=-6)))  # hora CDMX
 
-MARCA, MARCA_F = "#2e7d32", "#1b5e20"  # verde Ele Foods (estructura); los positivos van en negro, lo negativo en rojo
+MARCA, MARCA_F = "#2e7d32", "#1b5e20"  # verde Ele Foods (estructura); números positivos en VERDE, negativos en ROJO
 TINTA, SEC, MUTED, BORDE, FONDO, VERDE, ROJO, AZUL = (
     "#0b0b0b", "#52514e", "#7a7974", "#e3e2de", "#f4f3f0", "#1f7a3d", "#b3261e", "#2a78d6")
 
@@ -85,11 +85,11 @@ def tarjeta(etiqueta, valor, detalle, color=TINTA):
 
 def armar(d, src_grafica="cid:holgura"):
     p, costos = d["pulso"], d["costos"]
-    color = TINTA if p["margen"] >= 0 else ROJO
+    color = VERDE if p["margen"] >= 0 else ROJO
     fecha_hoy = HOY.strftime("%d/%m/%Y")
     h = p["holgura"]
     signo_h = "+" if h >= 0 else "−"
-    color_h = TINTA if h >= 0 else ROJO
+    color_h = VERDE if h >= 0 else ROJO
     ctx = p.get("contexto", {})
     aviso = {"sin": "⚠️ Sin holgura · ", "baja": "⚠️ Holgura baja · "}.get(ctx.get("semaforo"), "")
     asunto = f"{aviso}Pulso McAllen · {fecha_hoy} · holgura {signo_h}${abs(h):.2f}/kg · margen est. {peso(p['margen'])}/caja"
@@ -97,7 +97,7 @@ def armar(d, src_grafica="cid:holgura"):
     def cambio(v, etiqueta):  # ▲ $0.29 vs. el 25/09
         if v is None:
             return ""
-        flecha, col = ("▲", TINTA) if v > 0.005 else ("▼", ROJO) if v < -0.005 else ("=", SEC)
+        flecha, col = ("▲", VERDE) if v > 0.005 else ("▼", ROJO) if v < -0.005 else ("=", SEC)
         return f"<span style='color:{col}'>{flecha} ${abs(v):.2f}</span> {etiqueta}"
     partes = [cambio(ctx.get("vs_ayer"), f"vs. el {ctx.get('fecha_ayer', '')}"),
               cambio(ctx.get("vs_semana"), "vs. hace una semana")]

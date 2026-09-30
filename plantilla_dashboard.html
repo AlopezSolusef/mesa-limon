@@ -13,7 +13,7 @@
   --text-primary: #0b0b0b; --text-secondary: #52514e; --text-muted: #7a7974;
   --series-1: #2a78d6; --series-2: #eb6834; --series-3: #1baf7a;
   --neutral-mark: #a3a29c; --band: rgba(122,121,116,.16);
-  --up: var(--text-primary); --down: #b3261e;
+  --up: #1f7a3d; --down: #b3261e;
   --marca: #2e7d32; --marca-fuerte: #1b5e20; --marca-claro: #e8f3e6; --sobre-marca: #ffffff;
 }
 @media (prefers-color-scheme: dark) {
@@ -23,7 +23,7 @@
     --text-primary: #ffffff; --text-secondary: #c3c2b7; --text-muted: #8f8e86;
     --series-1: #3987e5; --series-2: #d95926; --series-3: #199e70;
     --neutral-mark: #6b6a64; --band: rgba(195,194,183,.14);
-    --up: var(--text-primary); --down: #ff8a80;
+    --up: #5cc07a; --down: #ff8a80;
     --marca: #4caf50; --marca-fuerte: #2e7d32; --marca-claro: #1f2e1f; --sobre-marca: #ffffff;
   }
 }
@@ -33,7 +33,7 @@
   --text-primary: #ffffff; --text-secondary: #c3c2b7; --text-muted: #8f8e86;
   --series-1: #3987e5; --series-2: #d95926; --series-3: #199e70;
   --neutral-mark: #6b6a64; --band: rgba(195,194,183,.14);
-  --up: var(--text-primary); --down: #ff8a80;
+  --up: #5cc07a; --down: #ff8a80;
   --marca: #4caf50; --marca-fuerte: #2e7d32; --marca-claro: #1f2e1f; --sobre-marca: #ffffff;
 }
 * { box-sizing: border-box; }
@@ -125,7 +125,7 @@ table.lista { margin: 6px 0 0; font-size: 14px; }
 table.lista td { border: 0; padding: 5px 0; color: var(--text-secondary); }
 table.lista td:last-child { color: var(--text-primary); text-align: right; font-variant-numeric: tabular-nums; }
 table.lista tr.total td { color: var(--text-primary); font-weight: 700; border-top: 1px solid var(--text-muted); }
-table.lista td.pos { color: var(--text-primary); font-weight: 700; } table.lista td.neg { color: var(--down); font-weight: 700; }
+table.lista td.pos { color: var(--up); font-weight: 700; } table.lista td.neg { color: var(--down); font-weight: 700; }
 .pulso-titulo { font-size: 22px; font-weight: 700; letter-spacing: -.01em; color: var(--marca-fuerte); }
 details.mas { border-top: 1px solid var(--border); margin-top: 16px; padding-top: 10px; }
 details.mas summary { cursor: pointer; color: var(--text-secondary); font-size: 13px; font-weight: 600; }
