@@ -1,39 +1,64 @@
 {
-  "_nota": "Costos por camión para el Pulso McAllen. Montos en MXN. Se actualiza aquí cuando cambien.",
-  "fuente": "Oscar: hoja Gastos Fijos V-040 y audios del 29/09/2026",
-  "por_confirmar": "reparto de la merma entre segundas y terceras (se supone 50/50)",
-  "cajas_por_camion": 1080,
-  "rendimiento_pct_por_mes": {
-    "_nota": "% de la fruta comprada que sale como caja de exportación. Oscar: ~80% hoy, >90% en invierno, 65-70% en verano.",
-    "1": 90, "2": 90, "3": 80, "4": 80, "5": 80, "6": 67.5,
-    "7": 67.5, "8": 67.5, "9": 80, "10": 80, "11": 80, "12": 90
-  },
-  "precio_fruta_oscar": 20,
-  "precio_fruta": {
-    "fuente": "jalapa",
-    "ajuste": 0,
-    "_nota": "Solo SNIIM Jalapa. Con +4 (Oscar ~20 vs SNIIM 16 el 29/09/2026) el histórico daba pérdida 2 de cada 3 semanas, poco creíble."
-  },
+  "_nota": "Costos por viaje para el Pulso: limón persa de Martínez de la Torre → McAllen → Los Ángeles, venta a Red Hot Chilis. Se actualiza aquí cuando cambie el Excel.",
+  "fuente": "Excel 'Ele Foods l Precio 2026-11-11' (hojas Op1 y Flete y frío McAllen)",
+  "por_confirmar": "tarifa de Green Light Go por escrito, los $5,000 MXN de ambas aduanas con Oscar, póliza de seguro con robo, margen de Red Hot Chilis y reparto de la merma entre segundas y terceras",
+
+  "cajas_por_viaje": 1080,
+  "kg_fruta_por_viaje": 22500,
+  "kg_empacados_por_viaje": 18900,
   "merma": {"precio_segunda": 2, "precio_tercera": 0.5, "pct_segunda": 50},
-  "empaque": [
-    ["Cartón", 1080, 31.28],
+  "_merma": "Merma = kg comprados − kg empacados. Se queda en el acopio y se vende como segundas y terceras (Oscar 11/11/2026; precios de su cuadro del 29/09/2026). El reparto 50/50 está por confirmar.",
+  "_kg_fruta": "Oscar 11/11/2026: se compran ~22,500 kg (lo que se paga) y se van empacados 18,900 kg. La merma se queda en el centro de acopio; el cargamento llega al 100%.",
+
+  "precio_fruta": {
+    "fuente": "manual",
+    "kg": 25,
+    "_nota": "manual = usa 'kg' (subasta 11/11/2026; antes $17 el 04/11). Con 'jalapa' o 'iztapalapa' usa el SNIIM del día. El SNIIM de Jalapa siempre se muestra como referencia."
+  },
+
+  "origen_mxn": [
+    ["Cartón", 1080, 31.281],
     ["Maquila", 1080, 14],
     ["Tarimas", 18, 200],
     ["Esquineros", 72, 14],
-    ["Certificado", 1, 1650],
+    ["Certificado fitosanitario", 1, 1650],
     ["Sello", 1, 100],
-    ["Personal", 2, 1000],
-    ["Seguro", 1, 3000],
-    ["Facturación", 1, 6000],
-    ["Termógrafo", 1, 460]
+    ["Termógrafo", 1, 460],
+    ["Personal", 3, 1000],
+    ["Facturación", 1, 4761]
   ],
-  "transporte": 40000,
-  "aduanas": [
-    ["Aduanas México y EE. UU. (aprox.)", 5000]
+  "flete_mcallen_mxn": 40000,
+  "_flete_mcallen": "Flete Martínez de la Torre → McAllen (cotización Oscar).",
+
+  "aduana_mexico_mxn": 1400,
+  "aduana_eeuu_usd": 240,
+  "_aduanas": "México: SAE Aduanales, $1,400 MXN fijo. EE. UU.: Santos International (entry $65, FDA $15, inspección USDA $160). Sin arancel por T-MEC.",
+
+  "frio_usd": [
+    ["Cuarto frío Transkool (18 tarimas × $18, incluye 7 días)", 324],
+    ["Registrador de temperatura Locus Trax", 65]
   ],
-  "comision_pct": 10,
-  "_comision": "Comisión del broker en McAllen: 10% sobre el precio de venta total (César, 29/09/2026).",
-  "camiones_por_semana": 3,
+
+  "flete_la_usd": 4200,
+  "_flete_la": "Flete McAllen → Los Ángeles: Green Light Go (target, falta por escrito). Respaldo: TRAFFIX $4,750.",
+
+  "contingencias_mxn": 1200,
+  "_contingencias": "Revisión en rampa en México ($1,200 MXN, al azar) y esperas.",
+
+  "seguro_pct": 0.6,
+  "financiamiento": {"tasa_anual_pct": 12, "dias": 30},
+  "_seguro_financiamiento": "Seguro: 0.6% del valor de la carga. Financiamiento: Red Hot Chilis paga a 30 días (NET 30); tasa de ejemplo 12% anual. Ambos sobre el costo del viaje.",
+
+  "venta": {
+    "cliente": "Red Hot Chilis",
+    "margen_cliente_usd": 2,
+    "margen_minimo_usd": 3,
+    "mezcla_pct": {"200s": 40, "230s": 40, "250s": 20},
+    "sustituto": {"250s": "230s"},
+    "dias_promedio": 5,
+    "_nota": "Precio a RHC = terminal LA de USDA (promedio de calidades) − su margen. 250s sin cotización: se usa 230s. Para que el número no brinque cada día se promedian los últimos 5 reportes. Precio piso = costo + margen mínimo de Ele Foods."
+  },
+
   "alerta_holgura_kg": 2,
-  "_alerta": "Si la holgura baja de este valor (MXN/kg), el correo avisa con ⚠️ en el asunto."
+  "_alerta": "Si la holgura (precio máximo de la fruta − precio de la fruta) baja de este valor (MXN/kg), el correo avisa con ⚠️ en el asunto."
 }

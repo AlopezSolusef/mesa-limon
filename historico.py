@@ -459,11 +459,12 @@ def construir(usda, fx, ct, espejo, census=None, terminales=None, sniim=None):
         "generado": datetime.now(HORA_CDMX).strftime("%d/%m/%Y %H:%M") + " (hora CDMX)",
     }
     # Pulso con costos base: lo usa el correo diario (enviar_correo.py)
-    datos["pulso"] = calcular_pulso(cadena, datos["origen"], datos["costos"], fx_hoy)
-    datos["holgura_hist"] = holgura_historica(diario, fx, sniim, datos["costos"])
+    la = (terminales or {}).get("Los Ángeles")
+    datos["pulso"] = calcular_pulso(la, datos["origen"], datos["costos"], fx_hoy)
+    datos["holgura_hist"] = holgura_historica(la, fx, sniim, datos["costos"])
     if datos["pulso"]:
-        datos["pulso"]["contexto"] = contexto_holgura(diario, fx, sniim, datos["costos"],
-                                                      datos["pulso"]["holgura"], datos["holgura_hist"])
+        datos["pulso"]["contexto"] = contexto_holgura(la, fx, datos["costos"], datos["pulso"]["holgura"],
+                                                      datos["pulso"]["precio_max_fruta"], datos["holgura_hist"])
     (AQUI / "pulso.json").write_text(json.dumps(limpiar({
         "pulso": datos["pulso"], "insights": datos["insights"], "costos": datos["costos"],
         "holgura_hist": datos["holgura_hist"],
@@ -477,124 +478,185 @@ def construir(usda, fx, ct, espejo, census=None, terminales=None, sniim=None):
     print(f"  Dashboard: {AQUI / 'dashboard.html'}")
 
 
-def maximo_pagable(neta, costos):
-    """Precio máximo de la fruta (MXN/kg) para una serie de precios de venta netos (MXN/caja) indexada por fecha."""
-    cajas = costos["cajas_por_camion"]
-    fijo = (sum(n * pu for _, n, pu in costos["empaque"]) + costos["transporte"]
-            + sum(v for _, v in costos["aduanas"])) / cajas
-    mr = costos["merma"]
-    precio_merma = (mr["precio_segunda"] * mr["pct_segunda"] + mr["precio_tercera"] * (100 - mr["pct_segunda"])) / 100
-    rend = neta.index.month.map(lambda m: costos["rendimiento_pct_por_mes"][str(m)]).astype(float)
-    kg_empacado = cajas * KG_POR_CAJA_40LB
-    kg_fruta = kg_empacado / rend * 100
-    merma = (kg_fruta - kg_empacado) * precio_merma / cajas
-    return (neta - fijo + merma) * cajas / kg_fruta
+# ---------------------------------------------------------------- Pulso: viaje a Los Ángeles (Red Hot Chilis)
+# Mismo cálculo que el Excel de costos (hojas Op1 y "Flete y frío McAllen"). La pestaña Simulador repite
+# este cálculo en JavaScript (función calcularViaje()); si cambias uno, cambia el otro.
+
+def factor_cargos(costos):
+    """Seguro de carga + costo financiero NET 30, como proporción del costo del viaje."""
+    f = costos["financiamiento"]
+    return 1 + costos["seguro_pct"] / 100 + f["tasa_anual_pct"] / 100 * f["dias"] / 365
 
 
-def contexto_holgura(diario, fx, sniim, costos, holgura_hoy, hist):
-    """Holgura de hoy contra el reporte anterior, contra hace una semana y contra la misma temporada de otros años."""
+def costos_sin_fruta(costos, fx):
+    """Costo del viaje sin fruta y antes de seguro y financiamiento (MXN). fx puede ser número o serie."""
+    mxn = (sum(n * pu for _, n, pu in costos["origen_mxn"]) + costos["flete_mcallen_mxn"]
+           + costos["aduana_mexico_mxn"] + costos["contingencias_mxn"])
+    usd = costos["aduana_eeuu_usd"] + sum(v for _, v in costos["frio_usd"]) + costos["flete_la_usd"]
+    return mxn + usd * fx - venta_merma(costos)
+
+
+def venta_merma(costos):
+    """Lo que se recupera por viaje vendiendo la merma del acopio como segundas y terceras (MXN)."""
+    m, emp = costos.get("merma"), costos.get("kg_empacados_por_viaje")
+    if not m or not emp:
+        return 0
+    precio = (m["precio_segunda"] * m["pct_segunda"] + m["precio_tercera"] * (100 - m["pct_segunda"])) / 100
+    return max(kg_fruta(costos) - emp, 0) * precio
+
+
+def kg_fruta(costos):
+    """Kilos de fruta que se pagan por viaje (los comprados; la merma se queda en el centro de acopio).
+    Si costos.json no los trae, se usa cajas × 40 lb."""
+    return costos.get("kg_fruta_por_viaje") or costos["cajas_por_viaje"] * KG_POR_CAJA_40LB
+
+
+def maximo_pagable(venta_usd_caja, fx, costos):
+    """Precio máximo de la fruta (MXN/kg) para no perder, con el precio promedio a Red Hot Chilis (USD/caja)."""
+    venta_viaje = venta_usd_caja * fx * costos["cajas_por_viaje"]
+    return (venta_viaje / factor_cargos(costos) - costos_sin_fruta(costos, fx)) / kg_fruta(costos)
+
+
+def precios_la(terminal, costos):
+    """Terminal LA por calibre de la mezcla (USD/caja, promedio de calidades del día).
+    Devuelve (precios con sustituto, precios tal cual)."""
+    v = costos["venta"]
+    d = terminal.assign(fecha=pd.to_datetime(terminal["fecha"]))
+    crudo = d.groupby(["fecha", "calibre"])["precio"].mean().unstack()
+    cal = list(v["mezcla_pct"])
+    crudo = crudo.reindex(columns=sorted(set(cal) | set(v["sustituto"].values())))
+    p = crudo.copy()
+    for c, s in v["sustituto"].items():
+        p[c] = p[c].fillna(p[s])
+    return p[cal], crudo[cal]
+
+
+def precio_mezcla(p, costos):
+    """Precio promedio del viaje a Red Hot Chilis (USD/caja) según la mezcla de calibres."""
+    v = costos["venta"]
+    pesos = pd.Series(v["mezcla_pct"]) / 100
+    return (p[list(pesos.index)].dropna() - v["margen_cliente_usd"]).mul(pesos).sum(axis=1)
+
+
+def precio_fruta(costos, origen):
+    """MXN/kg de la fruta que usa el cálculo y de dónde sale."""
     pf = costos["precio_fruta"]
-    ref = (sniim or {}).get(pf["fuente"] if pf["fuente"] != "manual" else "jalapa")
-    if ref is None or "Estándar" not in diario:
-        return {}
-    fob = diario["Estándar"].dropna()
-    d = pd.DataFrame({"fob": fob}).reset_index()
-    d = pd.merge_asof(d, fx[["fecha", "USD/MXN"]].dropna().sort_values("fecha"), on="fecha")
-    sn = ref.assign(fecha=pd.to_datetime(ref["fecha"])).sort_values("fecha")[["fecha", "frec"]]
-    d = pd.merge_asof(d, sn, on="fecha").set_index("fecha").dropna()
+    r = (origen or {}).get(pf["fuente"])
+    if pf["fuente"] == "manual" or not r:
+        return pf["kg"], "subasta, capturado a mano"
+    return r["frec"], f"SNIIM {r['nombre'].replace('Central de Abasto ', '')} del {r['fecha']}"
+
+
+def contexto_holgura(terminal, fx, costos, holgura_hoy, maximo_hoy, hist):
+    """Cambio del precio máximo de la fruta vs. el reporte anterior, vs. hace una semana y vs. la misma temporada."""
+    p, _ = precios_la(terminal, costos)
+    p = p.rolling(costos["venta"]["dias_promedio"], min_periods=1).mean()
+    d = pd.DataFrame({"venta": precio_mezcla(p, costos)}).reset_index()
+    d = pd.merge_asof(d, fx[["fecha", "USD/MXN"]].dropna().sort_values("fecha"), on="fecha").set_index("fecha").dropna()
     d = d[d.index >= d.index.max() - pd.Timedelta(days=30)]
-    neta = d["fob"] * d["USD/MXN"] * (1 - costos["comision_pct"] / 100)
-    h = maximo_pagable(neta, costos) - (d["frec"] + pf["ajuste"])
+    m = maximo_pagable(d["venta"], d["USD/MXN"], costos)
     out = {}
-    if len(h) >= 2:
-        out["vs_ayer"] = holgura_hoy - h.iloc[-2]
-        out["fecha_ayer"] = h.index[-2].strftime("%d/%m")
-    semana = h[h.index <= h.index[-1] - pd.Timedelta(days=7)]
+    if len(m) >= 2:
+        out["vs_ayer"] = maximo_hoy - m.iloc[-2]
+        out["fecha_ayer"] = m.index[-2].strftime("%d/%m")
+    semana = m[m.index <= m.index[-1] - pd.Timedelta(days=7)]
     if len(semana):
-        out["vs_semana"] = holgura_hoy - semana.iloc[-1]
+        out["vs_semana"] = maximo_hoy - semana.iloc[-1]
     # misma temporada (±2 semanas del año) en los últimos 10 años
     if hist:
-        w = pd.DataFrame({"h": pd.Series(hist["max"]) - pd.Series(hist["sniim"])}).set_index(pd.to_datetime(hist["x"]))
-        hoy = h.index[-1]
+        w = pd.Series(hist["max"], index=pd.to_datetime(hist["x"])).dropna()
+        hoy = m.index[-1]
         sem, anio = hoy.isocalendar().week, hoy.year
         dist = (w.index.isocalendar().week.astype(int) - sem).abs()
         dist = dist.where(dist <= 26, 52 - dist)
-        mismas = w[(dist <= 2).values & (w.index.year < anio) & (w.index.year >= anio - ANIOS_COMPARACION)]["h"].dropna()
+        mismas = w[(dist <= 2).values & (w.index.year < anio) & (w.index.year >= anio - ANIOS_COMPARACION)]
         if len(mismas) >= 10:
-            out["pct_temporada"] = round(float((mismas < holgura_hoy).mean() * 100))
+            out["pct_temporada"] = round(float((mismas < maximo_hoy).mean() * 100))
             out["rango_temporada"] = f"{anio - ANIOS_COMPARACION}–{anio - 1}"
-    # semáforo
     umbral = costos.get("alerta_holgura_kg", 2)
     out["semaforo"] = "sin" if holgura_hoy < 0 else "baja" if holgura_hoy < umbral else "ok"
     out["umbral"] = umbral
     return out
 
 
-def holgura_historica(diario, fx, sniim, costos, desde="2016-01-01"):
-    """Semana a semana: precio máximo que se podía pagar por la fruta vs. precio SNIIM.
-    Usa los costos de hoy (costos.json) y el rendimiento de cada mes; FOB Estándar, FIX y SNIIM de cada semana."""
-    pf = costos["precio_fruta"]
-    ref = (sniim or {}).get(pf["fuente"] if pf["fuente"] != "manual" else "jalapa")
-    if ref is None or "Estándar" not in diario:
+def holgura_historica(terminal, fx, sniim, costos, desde="2016-01-01"):
+    """Semana a semana: precio máximo que se podía pagar por la fruta (venta a RHC en LA) vs. SNIIM Jalapa.
+    Usa los costos de hoy (costos.json) con el terminal LA y el FIX de cada semana."""
+    ref = (sniim or {}).get("jalapa")
+    if ref is None or terminal is None:
         return None
+    p, _ = precios_la(terminal, costos)
     w = pd.DataFrame({
-        "fob": diario["Estándar"].resample("W-FRI").mean(),
+        "venta": precio_mezcla(p.resample("W-FRI").mean(), costos),
         "fx": fx.set_index("fecha")["USD/MXN"].resample("W-FRI").mean(),
         "sniim": ref.assign(fecha=pd.to_datetime(ref["fecha"])).set_index("fecha")["frec"].resample("W-FRI").mean(),
     }).dropna()
     w = w[w.index >= desde]
-    maximo = maximo_pagable(w["fob"] * w["fx"] * (1 - costos["comision_pct"] / 100), costos)
+    maximo = maximo_pagable(w["venta"], w["fx"], costos)
     return {"x": w.index.strftime("%Y-%m-%d").tolist(), "max": maximo.round(2).tolist(),
-            "sniim": (w["sniim"] + pf["ajuste"]).round(2).tolist(),
-            "semanas_con_holgura": round(float((maximo > w["sniim"] + pf["ajuste"]).mean() * 100)),
+            "sniim": w["sniim"].round(2).tolist(),
+            "semanas_con_holgura": round(float((maximo > w["sniim"]).mean() * 100)),
             "desde": w.index[0].year}
 
 
-def calcular_pulso(cadena, origen, costos, fx, tier="Estándar"):
-    """Pulso McAllen en MXN por caja con los costos base de costos.json.
-    Es el mismo cálculo que hace la pestaña "Pulso McAllen" de la página (función resultados())."""
-    m = cadena["ultimo"].get("McAllen (FOB)", {})
-    p = m.get(tier) or m.get("Estándar")
-    if not p:
+def calcular_pulso(terminal, origen, costos, fx):
+    """Pulso de un viaje a Los Ángeles en MXN por caja con los costos de costos.json (igual que el Excel)."""
+    if terminal is None or not len(terminal):
         return None
-    venta = p["usd"] * fx
-    pf = costos["precio_fruta"]
-    r = (origen or {}).get(pf["fuente"])
-    if pf["fuente"] == "manual" or not r:
-        precio_kg, fuente_fruta = costos["precio_fruta_oscar"], "precio capturado a mano"
-    else:
-        precio_kg = r["frec"] + pf["ajuste"]
-        fuente_fruta = f"SNIIM {r['nombre'].replace('Central de Abasto ', '')} del {r['fecha']}" + (
-            f" {'+' if pf['ajuste'] > 0 else '−'} ajuste {abs(pf['ajuste']):.2f}" if pf["ajuste"] else "")
-    cajas = costos["cajas_por_camion"]
-    empaque = sum(n * pu for _, n, pu in costos["empaque"])
-    aduanas = sum(v for _, v in costos["aduanas"])
-    rend = costos["rendimiento_pct_por_mes"][str(datetime.now(HORA_CDMX).month)]  # varía por temporada
-    mr = costos["merma"]
-    precio_merma = (mr["precio_segunda"] * mr["pct_segunda"] + mr["precio_tercera"] * (100 - mr["pct_segunda"])) / 100
-    kg_empacado = cajas * KG_POR_CAJA_40LB
-    kg_fruta = kg_empacado / rend * 100
-    kg_merma = kg_fruta - kg_empacado
-    conceptos = [("Fruta", kg_fruta * precio_kg / cajas),
-                 ("Empaque", empaque / cajas),
-                 ("Transporte a McAllen", costos["transporte"] / cajas),
-                 ("Aduanas", aduanas / cajas),
-                 ("Venta de merma", -kg_merma * precio_merma / cajas)]
-    costo = sum(v for _, v in conceptos)
-    neta = venta * (1 - costos["comision_pct"] / 100)
-    margen = neta - costo
-    semanal = cajas * costos["camiones_por_semana"]
+    v = costos["venta"]
+    p, crudo = precios_la(terminal, costos)
+    p = p.dropna()
+    p = p[p.index >= p.index.max() - pd.Timedelta(days=14)]  # solo si es reciente
+    if not len(p):
+        return None
+    ult = p.index[-1]
+    prom = p.tail(v["dias_promedio"]).mean()
+    venta_usd = float(precio_mezcla(prom.to_frame().T, costos).iloc[0])
+
+    precio_kg, fuente_fruta = precio_fruta(costos, origen)
+    cajas, kg = costos["cajas_por_viaje"], kg_fruta(costos)
+    k = factor_cargos(costos)
+    fruta = kg * precio_kg
+    empaque = sum(n * pu for _, n, pu in costos["origen_mxn"])
+    aduanas = costos["aduana_mexico_mxn"] + costos["aduana_eeuu_usd"] * fx
+    frio = sum(x for _, x in costos["frio_usd"]) * fx
+    flete_la = costos["flete_la_usd"] * fx
+    base = fruta + costos_sin_fruta(costos, fx)
+    conceptos = [
+        (f"Fruta ({kg:,.0f} kg × ${precio_kg:,.2f})", fruta),
+        ("Empaque, certificado, personal y facturación", empaque),
+        ("Flete Martínez de la Torre → McAllen", costos["flete_mcallen_mxn"]),
+        ("Aduanas México + EE. UU.", aduanas),
+        ("Cuarto frío y registrador (Transkool)", frio),
+        ("Flete McAllen → Los Ángeles", flete_la),
+        ("Seguro, contingencias y financiamiento NET 30", costos["contingencias_mxn"] + base * (k - 1)),
+    ]
+    if venta_merma(costos):
+        conceptos.insert(1, ("Venta de merma (segundas y terceras)", -venta_merma(costos)))
+    conceptos = [(n, x / cajas) for n, x in conceptos]
+    costo = sum(x for _, x in conceptos)
+    costo_usd = costo / fx
+    venta = venta_usd * fx
+    margen = venta - costo
+    maximo = float(maximo_pagable(venta_usd, fx, costos))
+    piso = costo_usd + v["margen_minimo_usd"]
+    calibres = []
+    for c in v["mezcla_pct"]:
+        rhc = prom[c] - v["margen_cliente_usd"]
+        calibres.append({"calibre": c, "pct": v["mezcla_pct"][c], "terminal": round(prom[c], 2), "rhc": round(rhc, 2),
+                         "utilidad_usd": round(rhc - costo_usd, 2), "cumple": bool(rhc >= piso),
+                         "sustituto": v["sustituto"].get(c) if pd.isna(crudo.loc[ult, c]) else None})
+    sn = (origen or {}).get("jalapa")
     return {
-        "fecha_usda": p["fecha"], "usd_caja": p["usd"], "fx": fx, "tier": tier if m.get(tier) else "Estándar",
-        "precio_fruta_kg": precio_kg, "fuente_fruta": fuente_fruta,
-        "venta": venta, "costo": costo, "margen": margen, "pct": margen / venta if venta else 0,
-        "comision_pct": costos["comision_pct"], "comision_caja": venta - neta,
-        "utilidad_camion": margen * cajas, "cajas": cajas, "camiones": costos["camiones_por_semana"],
-        "semana_cajas": semanal, "semana_ventas": neta * semanal, "semana_utilidad": margen * semanal,
-        "conceptos": conceptos,
-        "precio_max_fruta": (neta - costo + conceptos[0][1]) * cajas / kg_fruta,
-        "rendimiento": rend, "kg_fruta": kg_fruta,
-        "holgura": (neta - costo + conceptos[0][1]) * cajas / kg_fruta - precio_kg,
+        "cliente": v["cliente"], "fecha_la": ult.strftime("%d/%m/%Y"), "dias_promedio": v["dias_promedio"],
+        "margen_cliente_usd": v["margen_cliente_usd"], "margen_minimo_usd": v["margen_minimo_usd"],
+        "fx": fx, "precio_fruta_kg": precio_kg, "fuente_fruta": fuente_fruta,
+        "sniim": {"kg": sn["frec"], "fecha": sn["fecha"]} if sn else None,
+        "calibres": calibres, "venta_usd": venta_usd, "venta": venta,
+        "costo": costo, "costo_usd": costo_usd, "piso_usd": piso,
+        "margen": margen, "margen_usd": venta_usd - costo_usd, "pct": margen / venta if venta else 0,
+        "utilidad_viaje": margen * cajas, "cajas": cajas, "kg_fruta": kg,
+        "conceptos": conceptos, "precio_max_fruta": maximo, "holgura": maximo - precio_kg,
     }
 
 

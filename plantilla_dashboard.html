@@ -136,6 +136,9 @@ details.mas[open] summary { margin-bottom: 8px; }
 .p-insights { margin: 4px 0 0; padding-left: 18px; font-size: 13px; line-height: 1.45; }
 .p-insights li { margin-bottom: 6px; } .p-insights span { color: var(--text-secondary); }
 .chip.neg { background: rgba(179,38,30,.10); color: var(--down); }
+table.lista.cal th { padding: 4px 0 4px 10px; } table.lista.cal th:first-child { padding-left: 0; }
+table.lista.cal td { padding: 5px 0 5px 10px; text-align: right; } table.lista.cal td:first-child { padding-left: 0; text-align: left; }
+table.lista.cal tr.total td { color: var(--text-primary); }
 footer { color: var(--text-muted); font-size: 12px; margin-top: 24px; }
 </style>
 </head>
@@ -150,32 +153,33 @@ footer { color: var(--text-muted); font-size: 12px; margin-top: 24px; }
   </header>
 
   <nav class="tabs" role="tablist">
-    <button role="tab" data-tab="pulso" aria-selected="true">Pulso McAllen</button>
+    <button role="tab" data-tab="pulso" aria-selected="true">Pulso LA</button>
     <button role="tab" data-tab="mercado" aria-selected="false">Mercado</button>
     <button role="tab" data-tab="costos" aria-selected="false">Simulador</button>
   </nav>
 
   <div id="tab-pulso" role="tabpanel">
   <section class="pulso-plano">
-    <div class="pulso-titulo" id="p-titulo">Pulso McAllen</div>
+    <div class="pulso-titulo" id="p-titulo">Pulso Los Ángeles</div>
     <div class="sub" id="p-sub"></div>
     <div class="holgura" id="p-holgura"></div>
     <div class="kpis pulso p-2x2" id="p-tarjetas"></div>
-    <h3>Proyección semanal</h3>
-    <div class="sub" id="p-semana-sub"></div>
-    <table class="lista" id="p-semana"></table>
-    <h3>Costo puesto por caja (MXN)</h3>
+    <h3>Precio por calibre (USD por caja)</h3>
+    <div class="sub" id="p-calibres-sub"></div>
+    <div class="tabla-wrap"><table class="lista cal" id="p-calibres"></table></div>
+    <h3>Costo entregado en Los Ángeles (MXN por caja)</h3>
     <table class="lista" id="p-desglose"></table>
     <h3>Lo relevante del mercado</h3>
     <ul class="p-insights" id="p-insights"></ul>
   </section>
   <section class="card pulso-card" style="max-width:680px">
-    <h2>Holgura histórica: cuánto se podía pagar vs. SNIIM</h2>
+    <h2>Holgura histórica: cuánto se podía pagar por la fruta vs. SNIIM</h2>
     <div class="sub" id="holgura-sub"></div>
     <div id="g-origen" class="chart sm"></div>
-    <div class="nota">Cuando la línea de precio máximo está arriba del SNIIM, había holgura. Usa los costos de hoy en todas las semanas
-      (con el rendimiento de cada mes), así que muestra cómo se mueve el mercado, no lo que ganamos en años pasados.
-      Fuentes: USDA, Banxico y SNIIM (Secretaría de Economía, limón persa de primera con origen Veracruz).</div>
+    <div class="nota">Precio máximo pagable = venta a Red Hot Chilis (terminal LA − su margen, mezcla de calibres) menos todos los costos del viaje,
+      entre los kilos de fruta. Usa los costos de hoy con el terminal LA y el FIX de cada semana, así que muestra cómo se mueve el mercado,
+      no lo que ganamos en años pasados. Cuando la línea azul está arriba del SNIIM, había holgura.
+      Fuentes: USDA (terminal LA), Banxico y SNIIM (Secretaría de Economía, limón persa de primera con origen Veracruz, Central de Jalapa).</div>
     <div class="nota" id="p-nota"></div>
   </section>
   </div>
@@ -263,25 +267,23 @@ footer { color: var(--text-muted); font-size: 12px; margin-top: 24px; }
 
 
     <div class="holgura" id="holgura"></div>
-    <div class="kpis pulso" id="pulso"></div>
-    <h2 style="margin-top:16px">Proyección semanal</h2>
-    <div class="sub" id="semana-sub"></div>
-    <div class="kpis pulso" id="semana"></div>
-    <h2 style="margin-top:16px">Costo puesto por caja (MXN)</h2>
-    <div class="tabla-wrap"><table id="desglose"></table></div>
+    <div class="kpis pulso p-2x2" id="pulso"></div>
+    <h2 style="margin-top:16px">Precio por calibre (USD por caja)</h2>
+    <div class="tabla-wrap"><table class="lista cal" id="s-calibres"></table></div>
+    <h2 style="margin-top:16px">Costo entregado en Los Ángeles (MXN por caja)</h2>
+    <table class="lista" id="desglose"></table>
 
     <details class="mas">
       <summary>¿Cómo se calcula y qué es estimado?</summary>
       <div id="como"></div>
       <div class="aviso" id="aviso-costos"></div>
-      <div class="nota">Precio de venta = FOB McAllen de USDA (promedio de calibres 110s–250s, caja de 40 lb) × FIX de Banxico.
-        Fruta por caja = kg de fruta por camión (según el rendimiento) × precio por kg ÷ cajas por camión. Margen = venta × (1 − comisión) − costo puesto.</div>
     </details>
   </section>
   </div>
 
   <footer>
-    Fuentes: USDA AMS Market News (reporte IX_FV110, Mexico Crossings Through Texas), Banxico SIE (SF43718, SF46410), UN Comtrade.
+    Fuentes: USDA AMS Market News (FOB McAllen IX_FV110; terminal Los Ángeles HC_FV010; terminal Nueva York NX_FV010), Banxico SIE (SF43718, SF46410),
+    SNIIM (Secretaría de Economía), UN Comtrade y US Census. Costos: <span id="f-costos"></span>.
     Precio por calibre = punto medio del rango "mostly" (o low–high si no hay mostly). Para actualizar: <code>py historico.py</code>.
   </footer>
 </main>
@@ -426,35 +428,122 @@ function insights() {
     n.textContent = (n.textContent ? n.textContent + " " : "") + `Comtrade publica con 2–3 meses de retraso; último mes: ${D.comercio.ultimo}.`);
 }
 
-const C = D.costos;
+const C = D.costos, P = D.pulso;
 const suma = xs => xs.reduce((a, x) => a + x, 0);
 const BASE = {  // valores oficiales (costos.json); al recargar la página se vuelve a ellos
-  fuente: C.precio_fruta.fuente, ajuste: C.precio_fruta.ajuste, origen: C.precio_fruta_oscar,
-  rend: C.rendimiento_pct_por_mes[String(new Date().getMonth() + 1)],  // rendimiento del mes (varía por temporada)
-  merma: (C.merma.precio_segunda * C.merma.pct_segunda + C.merma.precio_tercera * (100 - C.merma.pct_segunda)) / 100,
-  empaque: suma(C.empaque.map(([, n, p]) => n * p)), transporte: C.transporte,
-  aduanas: suma(C.aduanas.map(([, v]) => v)), comision: C.comision_pct, cajas: C.cajas_por_camion,
-  camiones: C.camiones_por_semana, tier: "Estándar" };
-const FUENTES = { jalapa: "SNIIM Jalapa", iztapalapa: "SNIIM CDMX", manual: "Manual" };
-function precioOrigen(c) {  // MXN/kg y de dónde sale
-  const r = D.origen && D.origen[c.fuente];
-  if (c.fuente === "manual" || !r) return { kg: c.origen, texto: "capturado a mano" };
-  return { kg: r.frec + c.ajuste, texto: `SNIIM ${r.nombre.replace("Central de Abasto ", "")} ${fmt(r.frec)} del ${r.fecha}` +
-           (c.ajuste ? ` ${c.ajuste > 0 ? "+" : "−"} ajuste ${fmt(Math.abs(c.ajuste))}` : "") };
-}
-const CAMPOS = [  // [clave, nombre, unidad, paso] · mismo formato que el Excel de Oscar
-  ["ajuste", "Ajuste vs. SNIIM", "MXN/kg: diferencia entre lo que pagamos en huerta y el SNIIM", 0.5],
-  ["origen", "Precio de la fruta", "MXN por kg", 0.5],
-  ["rend", "Rendimiento", "% de la fruta que sale como caja de exportación (este mes)", 1],
-  ["merma", "Venta de merma", "MXN/kg promedio de segundas y terceras", 0.25],
-  ["empaque", "Empaque", "MXN por camión (cartón, maquila, tarimas…)", 100],
-  ["transporte", "Transporte a McAllen", "MXN por camión", 500],
-  ["aduanas", "Aduanas", "MXN por camión (México + EE. UU.)", 100],
-  ["comision", "Comisión del distribuidor", "% del precio de venta", 0.5],
-  ["cajas", "Cajas por camión", "cajas de 40 lb", 10],
-  ["camiones", "Camiones por semana", "para la proyección", 1],
+  fuente: C.precio_fruta.fuente, fruta: C.precio_fruta.kg, kg: C.kg_fruta_por_viaje || C.cajas_por_viaje * D.tabla.kg, kgEmp: C.kg_empacados_por_viaje || 0, cajas: C.cajas_por_viaje,
+  precioMerma: C.merma ? (C.merma.precio_segunda * C.merma.pct_segunda + C.merma.precio_tercera * (100 - C.merma.pct_segunda)) / 100 : 0,
+  empaque: suma(C.origen_mxn.map(([, n, p]) => n * p)), fleteMc: C.flete_mcallen_mxn,
+  aduanaMx: C.aduana_mexico_mxn, aduanaUs: C.aduana_eeuu_usd, frio: suma(C.frio_usd.map(([, v]) => v)),
+  fleteLa: C.flete_la_usd, conting: C.contingencias_mxn, seguro: C.seguro_pct,
+  tasa: C.financiamiento.tasa_anual_pct, dias: C.financiamiento.dias,
+  margenRhc: C.venta.margen_cliente_usd, margenMin: C.venta.margen_minimo_usd, fx: P ? P.fx : D.kpi.fx };
+const FUENTES = { manual: "Subasta", jalapa: "SNIIM Jalapa", iztapalapa: "SNIIM CDMX" };
+const CAMPOS = [  // [clave, nombre, detalle, paso] · mismo orden que el Excel de costos
+  ["fruta", "Precio de la fruta", "MXN por kg (subasta)", 0.5],
+  ["kg", "Kilos comprados por viaje", "kg que se pagan (incluye la merma del acopio)", 100],
+  ["kgEmp", "Kilos empacados por viaje", "lo que viaja; la diferencia es merma", 100],
+  ["precioMerma", "Venta de merma", "MXN/kg promedio de segundas y terceras", 0.25],
+  ["cajas", "Cajas por viaje", "cajas de 40 lb", 10],
+  ["empaque", "Empaque, certificado, personal y facturación", "MXN por viaje", 100],
+  ["fleteMc", "Flete Martínez de la Torre → McAllen", "MXN por viaje", 500],
+  ["aduanaMx", "Aduana México", "MXN por viaje", 100],
+  ["aduanaUs", "Aduana EE. UU.", "USD por viaje", 10],
+  ["frio", "Cuarto frío y registrador (Transkool)", "USD por viaje", 10],
+  ["fleteLa", "Flete McAllen → Los Ángeles", "USD por viaje (Green Light Go 4,200 · TRAFFIX 4,750)", 50],
+  ["conting", "Contingencias", "MXN por viaje (revisión en rampa, esperas)", 100],
+  ["seguro", "Seguro de carga", "% del valor de la carga", 0.1],
+  ["tasa", "Costo del dinero", "% anual", 1],
+  ["dias", "Crédito a Red Hot Chilis", "días (NET 30)", 1],
+  ["margenRhc", "Margen de Red Hot Chilis", "USD por caja", 0.25],
+  ["margenMin", "Margen mínimo de Ele Foods", "USD por caja (precio piso)", 0.25],
+  ["fx", "Tipo de cambio", "MXN por USD (FIX del día)", 0.05],
 ];
 let costos = { ...BASE };
+
+function precioFruta(c) {  // MXN/kg y de dónde sale (igual que precio_fruta() en historico.py)
+  const r = D.origen && D.origen[c.fuente];
+  if (c.fuente === "manual" || !r) return { kg: c.fruta, texto: "subasta, capturado a mano" };
+  return { kg: r.frec, texto: `SNIIM ${r.nombre.replace("Central de Abasto ", "")} del ${r.fecha}` };
+}
+
+function calcularViaje(c) {  // mismo cálculo que calcular_pulso() en historico.py (y que el Excel de costos)
+  const fx = c.fx, cajas = Math.max(c.cajas, 1), kg = Math.max(c.kg, 1), f = precioFruta(c);
+  const k = 1 + c.seguro / 100 + c.tasa / 100 * c.dias / 365;          // seguro + financiamiento
+  const merma = c.kgEmp ? Math.max(kg - c.kgEmp, 0) * c.precioMerma : 0;   // se vende como segundas y terceras
+  const sinFruta = c.empaque + c.fleteMc + c.aduanaMx + c.conting + (c.aduanaUs + c.frio + c.fleteLa) * fx - merma;
+  const fruta = kg * f.kg, base = fruta + sinFruta;
+  const conceptos = [
+    [`Fruta (${fmt(kg, 0)} kg × $${fmt(f.kg)})`, fruta],
+    ...(merma ? [["Venta de merma (segundas y terceras)", -merma]] : []),
+    ["Empaque, certificado, personal y facturación", c.empaque],
+    ["Flete Martínez de la Torre → McAllen", c.fleteMc],
+    ["Aduanas México + EE. UU.", c.aduanaMx + c.aduanaUs * fx],
+    ["Cuarto frío y registrador (Transkool)", c.frio * fx],
+    ["Flete McAllen → Los Ángeles", c.fleteLa * fx],
+    ["Seguro, contingencias y financiamiento NET 30", c.conting + base * (k - 1)],
+  ].map(([n, x]) => [n, x / cajas]);
+  const costo = suma(conceptos.map(x => x[1])), costoUsd = costo / fx, piso = costoUsd + c.margenMin;
+  const calibres = P.calibres.map(x => {
+    const rhc = x.terminal - c.margenRhc;
+    return { ...x, rhc, utilidad_usd: rhc - costoUsd, cumple: rhc >= piso };
+  });
+  const ventaUsd = suma(calibres.map(x => x.rhc * x.pct / 100)), venta = ventaUsd * fx, margen = venta - costo;
+  const maximo = (venta * cajas / k - sinFruta) / kg;
+  return { ...P, fx, precio_fruta_kg: f.kg, fuente_fruta: f.texto, calibres, venta_usd: ventaUsd, venta, costo,
+    costo_usd: costoUsd, piso_usd: piso, margen, margen_usd: ventaUsd - costoUsd, pct: venta ? margen / venta : 0,
+    utilidad_viaje: margen * cajas, cajas, kg_fruta: kg, conceptos, precio_max_fruta: maximo, holgura: maximo - f.kg,
+    margen_cliente_usd: c.margenRhc, margen_minimo_usd: c.margenMin };
+}
+
+// ---- piezas que comparten el Pulso (valores oficiales) y el Simulador
+const tarjeta = (lbl, val, det, clase = "") =>
+  `<div class="kpi"><div class="lbl">${lbl}</div><div class="val ${clase}">${val}</div><div class="det">${det}</div></div>`;
+const cambio = (v, etq) => v == null ? "" :
+  `<span class="${v > 0.005 ? "up" : v < -0.005 ? "down" : ""}">${v > 0.005 ? "▲" : v < -0.005 ? "▼" : "="} $${fmt(Math.abs(v))}</span> ${etq}`;
+
+function htmlHolgura(r, ctx) {
+  const h = r.holgura, umbral = C.alerta_holgura_kg ?? 2;
+  const alerta = h < 0 ? "⚠️ Sin holgura: con este precio de fruta el viaje pierde"
+    : h < umbral ? `⚠️ Holgura baja (menos de $${umbral}/kg)` : "";
+  const sniim = r.sniim && r.fuente_fruta.indexOf("SNIIM") < 0
+    ? ` Referencia: SNIIM Jalapa <b>$${fmt(r.sniim.kg)}/kg</b> (${r.sniim.fecha}).` : "";
+  const contexto = ctx ? [cambio(ctx.vs_ayer, `vs. el ${ctx.fecha_ayer}`), cambio(ctx.vs_semana, "vs. hace una semana"),
+    ctx.pct_temporada != null ? `más alto que el ${ctx.pct_temporada}% de las semanas de esta temporada (${ctx.rango_temporada})` : ""]
+    .filter(Boolean).join(" · ") : "";
+  return `${alerta ? `<div class="down" style="font-weight:600;font-size:13px">${alerta}</div>` : ""}
+    <div class="lbl" style="color:var(--text-secondary);font-size:13px">Holgura de hoy</div>
+    <div class="top"><div class="big ${h >= 0 ? "pos" : "neg"}">${h >= 0 ? "+" : "−"}$${fmt(Math.abs(h))}/kg</div>
+      <div class="frase">Podemos pagar hasta <b>$${fmt(r.precio_max_fruta)}/kg</b> por la fruta sin perder.
+        La estamos pagando a <b>$${fmt(r.precio_fruta_kg)}/kg</b> (${r.fuente_fruta}).${sniim}</div></div>
+    ${contexto ? `<div style="font-size:13px;margin-top:6px">Precio máximo: ${contexto}</div>` : ""}`;
+}
+
+function htmlTarjetas(r) {
+  const cls = r.margen >= 0 ? "pos" : "neg";
+  return tarjeta(`Precio a ${r.cliente} / caja`, peso(r.venta), `${fmt(r.venta_usd)} USD · promedio de la mezcla`) +
+    tarjeta("Costo entregado en LA / caja", peso(r.costo), `${fmt(r.costo_usd)} USD · todo incluido`) +
+    tarjeta("Utilidad / caja", peso(r.margen), `<span class="chip ${cls}">${(r.pct * 100).toFixed(1)}% sobre venta</span> ${fmt(r.margen_usd)} USD`, cls) +
+    tarjeta("Utilidad / viaje", peso(r.utilidad_viaje), `${fmt(r.cajas, 0)} cajas · ${fmt(r.utilidad_viaje / r.fx, 0)} USD`, cls);
+}
+
+function htmlCalibres(r) {
+  const td = (v, cls = "") => `<td class="${cls}">${v}</td>`;
+  return `<tr><th>Calibre</th><th>Mezcla</th><th>Terminal LA</th><th>Precio a RHC</th><th>Utilidad</th><th>¿Arriba del piso?</th></tr>` +
+    r.calibres.map(x => `<tr>${td(x.calibre + (x.sustituto ? ` <span class="nota">(precio de ${x.sustituto})</span>` : ""))}` +
+      td(`${x.pct}%`) + td(fmt(x.terminal)) + td(fmt(x.rhc)) + td(fmt(x.utilidad_usd), x.utilidad_usd >= 0 ? "pos" : "neg") +
+      td(x.cumple ? "Sí" : "No", x.cumple ? "" : "neg") + "</tr>").join("") +
+    `<tr class="total">${td("Promedio del viaje")}${td("100%")}${td("")}${td(fmt(r.venta_usd))}` +
+    `${td(fmt(r.margen_usd), r.margen_usd >= 0 ? "pos" : "neg")}${td("")}</tr>`;
+}
+
+function htmlDesglose(r) {
+  return r.conceptos.map(([n, v]) => `<tr><td>${n}</td><td>${fmt(v, 2)}</td></tr>`).join("") +
+    `<tr class="total"><td>Costo entregado en Los Ángeles</td><td>${fmt(r.costo, 2)}</td></tr>` +
+    `<tr><td>En dólares (FIX ${fmt(r.fx, 4)})</td><td>${fmt(r.costo_usd, 2)} USD</td></tr>` +
+    `<tr><td>Precio piso a ${r.cliente} (costo + $${fmt(r.margen_minimo_usd)} de margen mínimo)</td><td>${fmt(r.piso_usd, 2)} USD</td></tr>` +
+    `<tr><td>Precio máximo de la fruta sin perder</td><td>${fmt(r.precio_max_fruta, 2)} MXN/kg</td></tr>`;
+}
 
 function flujo() {
   const u = D.cadena.ultimo, t = "Estándar";
@@ -469,24 +558,21 @@ function flujo() {
 const peso = (v, d = 0) => (v < 0 ? "−$" : "$") + fmt(Math.abs(v), d);
 
 function calculadora() {
-  const tiers = ["Estándar", "Fine", "Fair"];
-  const oculto = costos.fuente === "manual" ? "ajuste" : "origen";
-  const o = precioOrigen(costos);
+  if (!P) return;
   document.getElementById("aviso-costos").innerHTML =
-    `<b>Datos firmes:</b> precio de venta en McAllen (USDA), tipo de cambio (Banxico) y costos de ${C.fuente}.
-     <b>Estimado:</b> el precio de la fruta, que se toma del SNIIM (referencia pública, no lo que pagamos exactamente); por eso el costo puesto y el margen son estimados.
-     Por confirmar: ${C.por_confirmar}. Puedes cambiar cualquier valor para simular; al recargar la página vuelven los valores base.`;
+    `<b>Datos firmes:</b> terminal de Los Ángeles (USDA), tipo de cambio (Banxico) y costos del ${C.fuente}.
+     <b>Por confirmar:</b> ${C.por_confirmar}. Puedes cambiar cualquier valor para simular; al recargar la página vuelven los valores base.`;
+  const sn = D.origen && D.origen.jalapa;
   document.getElementById("campos").innerHTML =
-    `<label><span>Precio de la fruta<small>hoy: <b>${fmt(o.kg)} MXN/kg</b> · ${o.texto}${C.precio_fruta_oscar ? ` · hoja de Oscar: ${fmt(C.precio_fruta_oscar)}` : ""}</small></span><select data-k="fuente">${
-      Object.entries(FUENTES).map(([k, n]) => `<option value="${k}"${k === costos.fuente ? " selected" : ""}>${n}</option>`).join("")}</select></label>` +
-    CAMPOS.filter(([k]) => k !== oculto).map(([k, l, d, paso]) =>
-    `<label><span>${l}<small>${d}</small></span><input type="number" step="${paso}" ${k === "ajuste" ? "" : 'min="0"'} data-k="${k}" value="${Math.round(costos[k] * 100) / 100}"></label>`).join("") +
-    `<label><span>Calidad del precio de venta<small>nivel de apariencia USDA</small></span><select data-k="tier">${tiers.map(t =>
-      `<option${t === costos.tier ? " selected" : ""}>${t}</option>`).join("")}</select></label>
-     <button class="btn" id="reset">Volver a los valores base</button>`;
+    `<label><span>De dónde sale el precio de la fruta<small>${sn ? `SNIIM Jalapa hoy: ${fmt(sn.frec)} MXN/kg (${sn.fecha})` : ""}</small></span>
+      <select data-k="fuente">${Object.entries(FUENTES).map(([k, n]) =>
+        `<option value="${k}"${k === costos.fuente ? " selected" : ""}>${n}</option>`).join("")}</select></label>` +
+    CAMPOS.filter(([k]) => !(k === "fruta" && costos.fuente !== "manual")).map(([k, l, d, paso]) =>
+      `<label><span>${l}<small>${d}</small></span><input type="number" step="${paso}" min="0" data-k="${k}" value="${Math.round(costos[k] * 10000) / 10000}"></label>`).join("") +
+    `<button class="btn" id="reset">Volver a los valores base</button>`;
   document.querySelectorAll("#campos [data-k]").forEach(el => el.addEventListener(el.tagName === "SELECT" ? "change" : "input", () => {
     const k = el.dataset.k;
-    costos[k] = (k === "tier" || k === "fuente") ? el.value : (parseFloat(el.value) || 0);
+    costos[k] = k === "fuente" ? el.value : (parseFloat(el.value) || 0);
     if (k === "fuente") calculadora(); else resultados();
   }));
   document.getElementById("reset").addEventListener("click", () => { costos = { ...BASE }; calculadora(); });
@@ -494,81 +580,22 @@ function calculadora() {
 }
 
 function resultados() {
-  const c = costos, fx = D.kpi.fx, cajas = Math.max(c.cajas, 1);
-  const m = D.cadena.ultimo["McAllen (FOB)"] || {};
-  const p = m[c.tier] || m["Estándar"];
-  if (!p) { document.getElementById("pulso").innerHTML = "<div class='nota'>Sin precio reciente de USDA.</div>"; return; }
-  const venta = p.usd * fx;                                   // MXN por caja
-  const origen = precioOrigen(c);
-  const esBase = (k, v) => Math.abs(v - BASE[k]) < 0.005;
-  const detalleEmpaque = esBase("empaque", c.empaque)
-    ? C.empaque.filter(([, n, pu]) => n * pu).map(([nom, n, pu]) => `${nom} ${fmt(n * pu / cajas, 2)}`).join(" · ")
-    : `${peso(c.empaque)} ÷ ${fmt(cajas, 0)} cajas`;
-  const detalleAduanas = esBase("aduanas", c.aduanas)
-    ? C.aduanas.map(([nom, v]) => `${nom} ${peso(v)}`).join(" + ") + ` ÷ ${fmt(cajas, 0)} cajas`
-    : `${peso(c.aduanas)} ÷ ${fmt(cajas, 0)} cajas`;
-  const kgEmpacado = cajas * D.tabla.kg;                      // kg que salen en cajas de 40 lb
-  const kgFruta = kgEmpacado / Math.max(c.rend, 1) * 100;      // kg que hay que comprar en huerta
-  const kgMerma = kgFruta - kgEmpacado;                        // segundas y terceras
-  const conceptos = [
-    ["Fruta", kgFruta * origen.kg / cajas, `${fmt(kgFruta, 0)} kg (rendimiento ${fmt(c.rend, 1)} %) × ${fmt(origen.kg)} MXN/kg (${origen.texto}) ÷ ${fmt(cajas, 0)} cajas`],
-    ["Empaque", c.empaque / cajas, detalleEmpaque],
-    ["Transporte a McAllen", c.transporte / cajas, `${peso(c.transporte)} ÷ ${fmt(cajas, 0)} cajas`],
-    ["Aduanas", c.aduanas / cajas, detalleAduanas],
-    ["Venta de merma", -kgMerma * c.merma / cajas, `${fmt(kgMerma, 0)} kg de segundas y terceras × ${fmt(c.merma)} MXN/kg (resta al costo)`],
-  ];
-  const costo = suma(conceptos.map(x => x[1]));
-  const neta = venta * (1 - c.comision / 100), margen = neta - costo;
-  const pct = venta ? margen / venta : 0, cls = margen >= 0 ? "pos" : "neg";
-  const maxOrigen = kgFruta ? (neta - costo + conceptos[0][1]) * cajas / kgFruta : 0;
-  const tarjeta = (lbl, val, det, clase = "") => `<div class="kpi"><div class="lbl">${lbl}</div><div class="val ${clase}">${val}</div><div class="det">${det}</div></div>`;
-
-  document.getElementById("pulso-titulo").textContent = "Simulador";
-  document.getElementById("pulso-sub").textContent =
-    `Pesos por caja de 40 lb, con precios del último cierre · FOB McAllen del ${p.fecha} (${m[c.tier] ? c.tier : "Estándar"}): ${fmt(p.usd)} USD × FIX ${fmt(fx, 4)}`;
-  const holg = maxOrigen - origen.kg, ch = holg >= 0 ? "pos" : "neg";
-  const ref = c.fuente === "manual" ? "El precio capturado" : `El SNIIM (${D.origen[c.fuente].nombre})`;
-  const ctx = (D.pulso && D.pulso.contexto) || {};
+  const r = calcularViaje(costos);
   const simulando = Object.keys(BASE).some(k => costos[k] !== BASE[k]);  // el contexto solo aplica a los valores base
-  const cambio = (v, etq) => v == null ? "" :
-    `<span class="${v > 0.005 ? "up" : v < -0.005 ? "down" : ""}">${v > 0.005 ? "▲" : v < -0.005 ? "▼" : "="} $${fmt(Math.abs(v))}</span> ${etq}`;
-  const contexto = simulando ? "" : [cambio(ctx.vs_ayer, `vs. el ${ctx.fecha_ayer}`), cambio(ctx.vs_semana, "vs. hace una semana"),
-    ctx.pct_temporada != null ? `mejor que el ${ctx.pct_temporada}% de las semanas de esta temporada (${ctx.rango_temporada})` : ""]
-    .filter(Boolean).join(" · ");
-  const umbral = C.alerta_holgura_kg ?? 2;
-  const alerta = holg < 0 ? "⚠️ Sin holgura" : holg < umbral ? `⚠️ Holgura baja (menos de $${umbral}/kg)` : "";
-  const kgCaja = kgFruta / cajas;
-  document.getElementById("holgura").innerHTML = `
-    ${alerta ? `<div class="down" style="font-weight:600;font-size:13px">${alerta}</div>` : ""}
-    <div class="lbl" style="color:var(--text-secondary);font-size:13px">Holgura de hoy</div>
-    <div class="top"><div class="big ${ch}">${holg >= 0 ? "+" : "−"}$${fmt(Math.abs(holg))}/kg</div>
-      <div class="frase">Hoy podemos pagar hasta <b>$${fmt(maxOrigen)}/kg</b> por la fruta sin perder. ${ref} marca <b>$${fmt(origen.kg)}/kg</b>.</div></div>
-    ${contexto ? `<div style="font-size:13px;margin-top:6px">${contexto}</div>` : ""}
-`;
+  document.getElementById("pulso-sub").textContent =
+    `Viaje de ${fmt(r.cajas, 0)} cajas de 40 lb a ${r.cliente} · terminal LA promedio de los últimos ${r.dias_promedio} reportes al ${r.fecha_la} · FIX ${fmt(r.fx, 4)}`;
+  document.getElementById("holgura").innerHTML = htmlHolgura(r, simulando ? null : P.contexto);
+  document.getElementById("pulso").innerHTML = htmlTarjetas(r);
+  document.getElementById("s-calibres").innerHTML = htmlCalibres(r);
+  document.getElementById("desglose").innerHTML = htmlDesglose(r);
+  const kgCaja = r.kg_fruta / r.cajas, k = 1 + costos.seguro / 100 + costos.tasa / 100 * costos.dias / 365;
   document.getElementById("como").innerHTML = `
-    <div class="como">Sensibilidad: si el FOB sube o baja $1 USD, el precio máximo cambia $${fmt(fx * (1 - c.comision / 100) / kgCaja)}/kg;
-      cada $1/kg que cambie la fruta mueve el costo $${fmt(kgCaja)} por caja.</div>
-    <div class="como">Cómo se calcula: al precio de venta en McAllen (USDA × tipo de cambio) se le restan empaque, transporte y aduanas y se le suma la venta de merma;
-      lo que queda se divide entre los kilos de fruta que necesita un camión (rendimiento ${fmt(c.rend, 0)} % este mes). Todo eso son datos firmes.
-      El SNIIM es el precio público del limón persa de Veracruz en central de abasto (Secretaría de Economía): una referencia del mercado, no lo que pagamos exactamente.</div>`;
-  document.getElementById("pulso").innerHTML =
-    tarjeta("Precio de venta / caja", peso(venta), `${fmt(p.usd)} USD · FOB McAllen`) +
-    tarjeta("Costo puesto (est.)", peso(costo), `${peso(costo * cajas)} por camión`) +
-    tarjeta("Margen bruto / caja (est.)", peso(margen), `<span class="chip ${cls}">${(pct * 100).toFixed(1)}% sobre venta</span>`, cls) +
-    tarjeta("Utilidad / camión (est.)", peso(margen * cajas), `${fmt(cajas, 0)} cajas`, cls);
-  const vol = cajas * c.camiones;
-  document.getElementById("semana-sub").textContent = `Suponiendo ${fmt(c.camiones, 0)} camiones de ${fmt(cajas, 0)} cajas cada uno`;
-  document.getElementById("semana").innerHTML =
-    tarjeta("Volumen", fmt(vol, 0), "cajas") +
-    tarjeta("Ventas", peso(neta * vol), "MXN, neto de comisión") +
-    tarjeta("Utilidad bruta", peso(margen * vol), "MXN", cls);
-  document.getElementById("desglose").innerHTML =
-    `<tr><th>Concepto</th><th>MXN / caja</th><th>% del costo</th><th>Cálculo</th></tr>` +
-    conceptos.map(([n, v, calc]) => `<tr><td>${n}</td><td>${fmt(v, 2)}</td><td>${fmt(costo ? v / costo * 100 : 0, 0)}%</td><td class="nota" style="text-align:left">${calc}</td></tr>`).join("") +
-    `<tr class="total"><td>Costo puesto McAllen</td><td>${fmt(costo, 2)}</td><td>100%</td><td></td></tr>` +
-    `<tr><td>Precio máximo de la fruta</td><td colspan="3" style="text-align:left"><b>${fmt(maxOrigen, 2)} MXN/kg</b>
-      <span class="nota">· lo más que se puede pagar sin perder · hoy: ${fmt(origen.kg, 2)} MXN/kg</span></td></tr>`;
-  gOrigen();
+    <div class="como">Sensibilidad: si el terminal LA sube o baja $1 USD por caja, el precio máximo de la fruta cambia
+      $${fmt(r.fx / k / kgCaja)}/kg; cada $1/kg que cambie la fruta mueve el costo $${fmt(kgCaja * k)} por caja.</div>
+    <div class="como">Cómo se calcula: precio a ${r.cliente} = terminal de Los Ángeles de USDA (promedio de calidades) − su margen, por calibre,
+      ponderado por la mezcla del viaje. Costo = fruta + empaque + flete a McAllen + aduanas + Transkool + flete a LA + contingencias,
+      más seguro (${fmt(costos.seguro, 1)}% del valor) y el costo de esperar ${fmt(costos.dias, 0)} días el pago (${fmt(costos.tasa, 0)}% anual).
+      Lo que cuesta en dólares se pasa a pesos con el FIX. Es el mismo cálculo que el Excel de costos.</div>`;
 }
 
 function gOrigen() {
@@ -578,7 +605,7 @@ function gOrigen() {
     `Promedio semanal, MXN/kg · desde ${h.desde}, hubo holgura en ${h.semanas_con_holgura}% de las semanas`;
   const trazas = [
     linea(h.x, h.max, "Precio máximo pagable", css("--series-1"), { hovertemplate: "%{y:,.2f}" }),
-    linea(h.x, h.sniim, "SNIIM (referencia de la fruta)", css("--series-2"), { hovertemplate: "%{y:,.2f}" }),
+    linea(h.x, h.sniim, "SNIIM Jalapa (referencia de la fruta)", css("--series-2"), { hovertemplate: "%{y:,.2f}" }),
   ];
   const L = tema();
   L.yaxis.title = { text: "MXN por kg", font: { size: 12 } }; L.yaxis.tickformat = ",.0f";
@@ -624,49 +651,30 @@ let angosto = innerWidth < 600;
 addEventListener("resize", () => { if ((innerWidth < 600) !== angosto) { angosto = !angosto; gEst(); } });
 
 function pulsoEjecutivo() {
-  const p = D.pulso;
-  if (!p) return;
-  const ctx = p.contexto || {}, cls = p.margen >= 0 ? "pos" : "neg", h = p.holgura;
-  const tarjeta = (lbl, val, det, clase = "") => `<div class="kpi"><div class="lbl">${lbl}</div><div class="val ${clase}">${val}</div><div class="det">${det}</div></div>`;
-  const cambio = (v, etq) => v == null ? "" :
-    `<span class="${v > 0.005 ? "up" : v < -0.005 ? "down" : ""}">${v > 0.005 ? "▲" : v < -0.005 ? "▼" : "="} $${fmt(Math.abs(v))}</span> ${etq}`;
-  const contexto = [cambio(ctx.vs_ayer, `vs. el ${ctx.fecha_ayer}`), cambio(ctx.vs_semana, "vs. hace una semana"),
-    ctx.pct_temporada != null ? `mejor que el ${ctx.pct_temporada}% de las semanas de esta temporada (${ctx.rango_temporada})` : ""]
-    .filter(Boolean).join(" · ");
-  const alerta = ctx.semaforo === "sin" ? "⚠️ Sin holgura" : ctx.semaforo === "baja" ? `⚠️ Holgura baja (menos de $${ctx.umbral}/kg)` : "";
-  document.getElementById("p-titulo").textContent = `Pulso McAllen · ${D.generado.slice(0, 10)}`;
-  document.getElementById("p-sub").textContent = `Pesos por caja de 40 lb, con precios del último cierre · FOB McAllen del ${p.fecha_usda} ` +
-    `(${p.tier}): ${fmt(p.usd_caja)} USD × FIX ${fmt(p.fx, 4)} · fruta a ${fmt(p.precio_fruta_kg)} MXN/kg (${p.fuente_fruta})`;
-  document.getElementById("p-holgura").innerHTML = `
-    ${alerta ? `<div class="down" style="font-weight:600;font-size:13px">${alerta}</div>` : ""}
-    <div class="lbl" style="color:var(--text-secondary);font-size:13px">Holgura de hoy</div>
-    <div class="top"><div class="big ${h >= 0 ? "pos" : "neg"}">${h >= 0 ? "+" : "−"}$${fmt(Math.abs(h))}/kg</div>
-      <div class="frase">Hoy podemos pagar hasta <b>$${fmt(p.precio_max_fruta)}/kg</b> por la fruta sin perder. El SNIIM marca <b>$${fmt(p.precio_fruta_kg)}/kg</b>.</div></div>
-    ${contexto ? `<div style="font-size:13px;margin-top:6px">${contexto}</div>` : ""}
-    <div class="como">Precio de venta en McAllen menos empaque, transporte y aduanas, más venta de merma, entre los kilos de fruta de un camión
-      (rendimiento ${fmt(p.rendimiento, 0)} %). El SNIIM es el precio público en central de abasto: una referencia, no lo que pagamos exactamente.
-      Por eso el costo y el margen son estimados.</div>`;
-  document.getElementById("p-tarjetas").innerHTML =
-    tarjeta("Precio de venta / caja", peso(p.venta), p.comision_pct
-      ? `${fmt(p.usd_caja)} USD · ${peso(p.venta - p.comision_caja)} neto de comisión ${fmt(p.comision_pct, 0)}%`
-      : `${fmt(p.usd_caja)} USD · FOB McAllen`) +
-    tarjeta("Costo puesto (est.)", peso(p.costo), `${peso(p.costo * p.cajas)} por camión`) +
-    tarjeta("Margen bruto / caja (est.)", peso(p.margen), `<span class="chip ${cls}">${(p.pct * 100).toFixed(1)}% sobre venta</span>`, cls) +
-    tarjeta("Utilidad / camión (est.)", peso(p.utilidad_camion), `${fmt(p.cajas, 0)} cajas`, cls);
-  document.getElementById("p-semana-sub").textContent = `${fmt(p.camiones, 0)} camiones de ${fmt(p.cajas, 0)} cajas`;
-  document.getElementById("p-semana").innerHTML =
-    `<tr><td>Volumen</td><td>${fmt(p.semana_cajas, 0)} cajas</td></tr>` +
-    `<tr><td>Ventas</td><td>${peso(p.semana_ventas)}</td></tr>` +
-    `<tr><td>Utilidad bruta (est.)</td><td class="${cls}">${peso(p.semana_utilidad)}</td></tr>`;
-  document.getElementById("p-desglose").innerHTML =
-    p.conceptos.map(([n, v]) => `<tr><td>${n}</td><td>${fmt(v, 2)}</td></tr>`).join("") +
-    `<tr class="total"><td>Total</td><td>${fmt(p.costo, 2)}</td></tr>` +
-    (p.comision_pct ? `<tr><td>Comisión del broker (${fmt(p.comision_pct, 0)}% de la venta)</td><td>${fmt(p.comision_caja, 2)}</td></tr>` : "") +
-    `<tr><td>Precio máximo de la fruta sin perder</td><td>${fmt(p.precio_max_fruta, 2)} MXN/kg</td></tr>`;
+  document.getElementById("f-costos").textContent = C.fuente;
+  const p = P;
+  if (!p) {
+    document.getElementById("p-holgura").innerHTML = "<div class='nota'>Sin precio reciente del terminal de Los Ángeles.</div>";
+    return;
+  }
+  document.getElementById("p-titulo").textContent = `Pulso Los Ángeles · ${D.generado.slice(0, 10)}`;
+  document.getElementById("p-sub").textContent =
+    `Un viaje de ${fmt(p.cajas, 0)} cajas de 40 lb: Martínez de la Torre → McAllen → Los Ángeles, venta a ${p.cliente}. ` +
+    `Terminal LA de USDA (promedio de los últimos ${p.dias_promedio} reportes al ${p.fecha_la}) · FIX ${fmt(p.fx, 4)}.`;
+  document.getElementById("p-holgura").innerHTML = htmlHolgura(p, p.contexto) +
+    `<div class="como">Lo que nos paga ${p.cliente} menos todos los costos del viaje (empaque, fletes, aduanas, Transkool, seguro y
+      financiamiento), entre los ${fmt(p.kg_fruta, 0)} kg de fruta de un viaje.</div>`;
+  document.getElementById("p-tarjetas").innerHTML = htmlTarjetas(p);
+  const bajo = p.calibres.filter(x => !x.cumple).map(x => x.calibre);
+  document.getElementById("p-calibres-sub").textContent =
+    `Precio a ${p.cliente} = terminal LA − $${fmt(p.margen_cliente_usd)} de su margen · precio piso: $${fmt(p.piso_usd)} (costo + $${fmt(p.margen_minimo_usd)})` +
+    (bajo.length ? ` · ${bajo.join(" y ")} hoy quedan abajo del piso` : "");
+  document.getElementById("p-calibres").innerHTML = htmlCalibres(p);
+  document.getElementById("p-desglose").innerHTML = htmlDesglose(p);
   document.getElementById("p-insights").innerHTML = D.insights.slice(0, 3)
     .map(i => `<li><b>${i.titulo}.</b> <span>${i.texto}</span></li>`).join("");
   document.getElementById("p-nota").textContent = `Costos: ${C.fuente}. Por confirmar: ${C.por_confirmar}. ` +
-    "Precios: USDA (FOB McAllen), Banxico (FIX) y SNIIM (fruta). Para probar otros costos, usa la pestaña Simulador.";
+    "Precios: USDA (terminal LA), Banxico (FIX) y SNIIM (referencia de la fruta). Para probar otros costos, usa la pestaña Simulador.";
 }
 
 function pestana(nombre) {
